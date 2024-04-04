@@ -2,7 +2,7 @@
 #define CLK D4
 #define DATA D2
 #define Sensor1 D5
-#define Sensor2 D6
+#define Sensor2 D1
 
 typedef enum{
   ST_RESET,
@@ -43,15 +43,15 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(Sensor2), SENSOR_DOWN, FALLING);
 }
 void loop() {
-  Scan();
+  Scan(500);
 }
 void ShiftByte(unsigned char byte){
   for(unsigned char i = 0; i < 8; i++){
     if(byte & 0x80){
-      digitalWrite(DATA, LOW);
+      digitalWrite(DATA, HIGH);
     }
     else{
-      digitalWrite(DATA, HIGH);
+      digitalWrite(DATA, LOW);
     }
     digitalWrite(CLK, HIGH);
     byte <<= 1;
@@ -61,8 +61,8 @@ void ShiftByte(unsigned char byte){
   digitalWrite(LAT, LOW);
 }
 void SetPin(unsigned char Pin, STATE state){
-  unsigned char byte = 0;
-  if(!state){
+  static unsigned char byte = 0;
+  if(state){
     byte |= (1 << Pin);
   }
   else{
@@ -75,12 +75,12 @@ void TogglePin(unsigned char Pin){
   byte ^= (1 << Pin);
   ShiftByte(byte);
 }
-void Scan(void){
-  for(unsigned char i  = 0; i < 8; i++){
-    SetPin(i, ST_RESET);
-    delay(100);
-  }
-}
+//void Scan(void){
+//  for(unsigned char i  = 0; i < 8; i++){
+//    SetPin(i, ST_RESET);
+//    delay(100);
+//  }
+//}
 void Scan(int time){
   if(Dir1 == 1 && Dir2 == 0){
     state = MODE_UP;
