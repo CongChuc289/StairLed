@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mô Phỏng LED Cầu Thang Thông Minh - Simulator</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --card-border: #1f2937;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.4);
+      --led-on: #fbbf24;
+      --led-glow: rgba(251, 191, 36, 0.85);
+      --led-off: #1e293b;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --purple: #a855f7;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 16px;
+      line-height: 1.4;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--card-border);
+    }
+    .header-title h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-title p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .badge-standalone {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* Bố cục 2 cột chính */
+    .grid-layout {
+      display: grid;
+      grid-template-columns: 460px 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 1024px) {
+      .grid-layout { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--card-border);
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Khung cầu thang trực quan */
+    .stair-visual-container {
+      background: #080d19;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 720px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #334155 #0b0f19;
+    }
+    .stair-visual-container::-webkit-scrollbar { width: 6px; }
+    .stair-visual-container::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+
+    /* Cảm biến đầu/cuối */
+    .sensor-node {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: #131c2e;
+      border: 1px dashed #334155;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+    .sensor-node:hover {
+      border-color: #38bdf8;
+      background: #17233a;
+    }
+    .sensor-node.active {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: #10b981;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+    }
+    .sensor-label {
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sensor-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #475569;
+      box-shadow: 0 0 4px rgba(0,0,0,0.5);
+      transition: all 0.2s;
+    }
+    .sensor-node.active .sensor-indicator {
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+    }
+
+    /* Từng bậc LED */
+    .step-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 6px;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      transition: background 0.15s ease;
+    }
+    .step-num {
+      width: 55px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-family: monospace;
+      text-align: right;
+    }
+    .step-led-track {
+      flex: 1;
+      height: 16px;
+      background: #0f172a;
+      border-radius: 4px;
+      border: 1px solid #1e293b;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.6);
+    }
+    .step-led-core {
+      width: 100%;
+      height: 100%;
+      background: var(--led-off);
+      transition: background 0.12s ease, box-shadow 0.12s ease;
+    }
+    .step-row.is-lit .step-led-core {
+      background: linear-gradient(90deg, #f59e0b, #fbbf24, #fef08a, #fbbf24, #f59e0b);
+      box-shadow: 0 0 14px var(--led-glow), inset 0 0 4px #ffffff;
+    }
+    .step-row.is-lit .step-num {
+      color: #fbbf24;
+      font-weight: 700;
+    }
+    .step-state-badge {
+      width: 40px;
+      font-size: 11px;
+      text-align: center;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+    .step-row.is-lit .step-state-badge {
+      color: #10b981;
+    }
+
+    /* Thẻ trạng thái & Tiến trình FSM */
+    .status-panel {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .status-box {
+      background: #0c121e;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .status-box-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .status-box-val {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .state-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .state-idle { background: #334155; color: #cbd5e1; }
+    .state-run-up { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; }
+    .state-run-down { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8; }
+    .state-run-both { background: rgba(168, 85, 247, 0.2); color: #a855f7; border: 1px solid #a855f7; }
+    .state-hold { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b; }
+    .state-off { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+
+    /* Thanh đếm ngược t2 (HOLD) */
+    .hold-bar-container {
+      margin-top: 10px;
+      background: #0c121e;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 10px 14px;
+    }
+    .hold-bar-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .hold-bar-track {
+      width: 100%;
+      height: 8px;
+      background: #1e293b;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .hold-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #f59e0b, #10b981);
+      transition: width 0.1s linear;
+    }
+
+    /* Nhóm nút kích hoạt */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    button, .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: white;
+      background: #1f2937;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    button:hover { filter: brightness(1.2); }
+    button:active { transform: scale(0.98); }
+    .btn-primary { background: #2563eb; }
+    .btn-success { background: #059669; }
+    .btn-warning { background: #d97706; }
+    .btn-danger { background: #dc2626; }
+    .btn-purple { background: #7c3aed; }
+
+    /* Cài đặt thông số */
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+      background: #0d1424;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 14px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .form-val { color: #38bdf8; font-family: monospace; }
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      background: #1e293b;
+      border-radius: 3px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+    }
+    select {
+      width: 100%;
+      padding: 8px 12px;
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      color: white;
+      font-size: 13px;
+      outline: none;
+    }
+    select:focus { border-color: #38bdf8; }
+
+    /* Presets */
+    .presets-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .preset-pill {
+      font-size: 11px;
+      padding: 4px 10px;
+      background: #1e293b;
+      border-radius: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .preset-pill:hover {
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    /* Terminal Console Log */
+    .terminal-card {
+      background: #050811;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+    }
+    .terminal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #1e293b;
+      color: var(--text-muted);
+    }
+    .terminal-body {
+      height: 230px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #334155 #050811;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .log-line {
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.4;
+    }
+    .log-time { color: #64748b; margin-right: 6px; }
+    .log-fsm { color: #38bdf8; }
+    .log-on { color: #10b981; }
+    .log-off { color: #f43f5e; }
+    .log-hold { color: #f59e0b; }
+    .log-sensor { color: #c084fc; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-title">
+        <h1><span>💡</span> TRÌNH MÔ PHỎNG LED CẦU THANG THÔNG MINH</h1>
+        <p>Mô phỏng độc lập 100% logic FSM (t0 sáng dồn, t1 tắt lần lượt từng bậc, t2 giữ sáng)</p>
+      </div>
+      <div class="badge-standalone">Standalone Simulator (Không phụ thuộc ESP)</div>
+    </header>
+
+    <div class="grid-layout">
+      <!-- CỘT TRÁI: KHUNG MÔ PHỎNG CẦU THANG TRỰC QUAN -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🪜 Giàn Bậc Cầu Thang (<span id="disp-total-steps">25</span> Bậc)</div>
+          <div style="font-size: 12px; color: var(--text-muted);" id="disp-active-count">0 / 25 sáng</div>
+        </div>
+
+        <div class="stair-visual-container">
+          <!-- Cảm biến trên (SS2) -->
+          <div class="sensor-node" id="sensor-top-node" onclick="triggerSensor(2)">
+            <div class="sensor-label">
+              <span>🚶</span>
+              <span>CẢM BIẾN TRÊN (SS2 - Bậc đỉnh)</span>
+            </div>
+            <div class="sensor-indicator"></div>
+          </div>
+
+          <!-- Danh sách các bậc LED (Render động bằng JS từ bậc N xuống 1) -->
+          <div id="stairs-list" style="display: flex; flex-direction: column; gap: 5px;"></div>
+
+          <!-- Cảm biến dưới (SS1) -->
+          <div class="sensor-node" id="sensor-bot-node" onclick="triggerSensor(1)">
+            <div class="sensor-label">
+              <span>🚶</span>
+              <span>CẢM BIẾN DƯỚI (SS1 - Bậc chân)</span>
+            </div>
+            <div class="sensor-indicator"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CỘT PHẢI: BẢNG ĐIỀU KHIỂN, TRẠNG THÁI & LOG FSM -->
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        
+        <!-- Bảng hiển thị trạng thái hiện thời -->
+        <div class="card">
+          <div class="status-panel">
+            <div class="status-box">
+              <div class="status-box-label">Trạng thái FSM hiện tại</div>
+              <div class="status-box-val">
+                <span id="fsm-badge" class="state-pill state-idle">STATE_IDLE</span>
+              </div>
+            </div>
+            <div class="status-box">
+              <div class="status-box-label">Thanh ghi Mask (32-bit HEX)</div>
+              <div class="status-box-val" style="font-family: monospace; color: #38bdf8;" id="mask-hex">0x00000000</div>
+            </div>
+            <div class="status-box">
+              <div class="status-box-label">Số LED đang bật</div>
+              <div class="status-box-val" style="color: #fbbf24;" id="stat-led-on">0 bậc</div>
+            </div>
+            <div class="status-box">
+              <div class="status-box-label">Hướng tắt sau HOLD</div>
+              <div class="status-box-val" style="font-size: 13px; color: #cbd5e1;" id="stat-next-off">TẮT DƯỚI LÊN</div>
+            </div>
+          </div>
+
+          <!-- Thanh đếm ngược thời gian HOLD (t2) -->
+          <div class="hold-bar-container" id="hold-container" style="display: none;">
+            <div class="hold-bar-head">
+              <span style="color: #f59e0b; font-weight: 600;">⏳ Đang giữ sáng t2 (HOLD)</span>
+              <span id="hold-timer-text" style="font-family: monospace;">5000 ms</span>
+            </div>
+            <div class="hold-bar-track">
+              <div class="hold-bar-fill" id="hold-bar-fill"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Các nút bấm kích hoạt tương tác mô phỏng -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🎮 Kích Hoạt Kịch Bản Mô Phỏng</div>
+          </div>
+          <div class="controls-grid">
+            <button class="btn btn-primary" onclick="triggerSensor(1)">
+              <span>⬆</span> Đi từ DƯỚI lên (SS1)
+            </button>
+            <button class="btn btn-primary" onclick="triggerSensor(2)">
+              <span>⬇</span> Đi từ TRÊN xuống (SS2)
+            </button>
+            <button class="btn btn-purple" onclick="triggerBothSensors()">
+              <span>↕</span> Cả 2 cùng đi (SS1 + SS2)
+            </button>
+            <button class="btn btn-warning" onclick="triggerExitPass()">
+              <span>🚪</span> Chạm Cảm biến Lối ra
+            </button>
+            <button class="btn btn-danger" onclick="triggerReset()">
+              <span>⏹</span> Tắt hết / Reset về CHỜ
+            </button>
+          </div>
+        </div>
+
+        <!-- Cài đặt thông số FSM (t0, t1, t2, N, Chế độ) -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">⚙ Cài Đặt Thông Số Thời Gian &amp; Chế Độ</div>
+          </div>
+
+          <div class="settings-grid">
+            <!-- Chế độ hoạt động -->
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <div class="form-label">
+                <span>Chế độ chạy:</span>
+              </div>
+              <select id="sel-mode" onchange="onModeChange()">
+                <option value="1">1. Cảm biến thông minh (FSM Kịch bản 1 -> 6)</option>
+                <option value="2">2. Kiểm tra LED (Sáng tất cả)</option>
+                <option value="3">3. Demo sáng dồn lên -> giữ t2 -> tắt dồn lên t1</option>
+                <option value="4">4. Demo sáng dồn xuống -> giữ t2 -> tắt dồn xuống t1</option>
+                <option value="5">5. Demo Sao Băng / Rượt đuổi</option>
+                <option value="6">6. Demo Chớp nháy đồng bộ</option>
+                <option value="7">7. Demo Sáng tắt so le chẵn lẻ</option>
+                <option value="8">8. Tắt toàn bộ</option>
+              </select>
+            </div>
+
+            <!-- Số bậc N -->
+            <div class="form-group">
+              <div class="form-label">
+                <span>Số bậc cầu thang (N):</span>
+                <span class="form-val" id="val-n">25</span>
+              </div>
+              <input type="range" id="input-n" min="1" max="32" value="25" oninput="onConfigChange()">
+            </div>
+
+            <!-- Thời gian sáng từng bậc t0 -->
+            <div class="form-group">
+              <div class="form-label">
+                <span>Thời gian sáng từng bậc (t0):</span>
+                <span class="form-val" id="val-t0">150 ms</span>
+              </div>
+              <input type="range" id="input-t0" min="30" max="1500" step="10" value="150" oninput="onConfigChange()">
+            </div>
+
+            <!-- Thời gian tắt từng bậc t1 -->
+            <div class="form-group">
+              <div class="form-label">
+                <span>Thời gian tắt từng bậc (t1):</span>
+                <span class="form-val" id="val-t1">540 ms</span>
+              </div>
+              <input type="range" id="input-t1" min="30" max="1500" step="10" value="540" oninput="onConfigChange()">
+            </div>
+
+            <!-- Thời gian giữ sáng t2 -->
+            <div class="form-group">
+              <div class="form-label">
+                <span>Thời gian giữ sáng sau rời (t2):</span>
+                <span class="form-val" id="val-t2">5000 ms</span>
+              </div>
+              <input type="range" id="input-t2" min="500" max="20000" step="500" value="5000" oninput="onConfigChange()">
+            </div>
+          </div>
+
+          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">Cấu hình mẫu nhanh:</div>
+          <div class="presets-row">
+            <span class="preset-pill" onclick="applyPreset(150, 150, 5000, 25)">⚡ Mặc định (t0=150ms, t1=150ms, t2=5s, 25 bậc)</span>
+            <span class="preset-pill" onclick="applyPreset(150, 540, 5000, 25)">🎯 Cấu hình thực tế bạn đang test (t0=150ms, t1=540ms, t2=5s)</span>
+            <span class="preset-pill" onclick="applyPreset(400, 600, 4000, 25)">🔍 Chậm để quan sát rõ từng bậc (t0=400ms, t1=600ms, t2=4s)</span>
+          </div>
+        </div>
+
+        <!-- Terminal Console Log FSM -->
+        <div class="terminal-card">
+          <div class="terminal-header">
+            <span>💻 NHẬT KÝ MÁY TRẠNG THÁI FSM (Mô phỏng Serial Monitor)</span>
+            <button style="padding: 3px 8px; font-size: 11px; background: #1e293b;" onclick="clearLogs()">Xóa log</button>
+          </div>
+          <div class="terminal-body" id="log-container">
+            <div class="log-line"><span class="log-time">[00:00:00]</span> <span class="log-fsm">[HỆ THỐNG]</span> Đã khởi động bộ mô phỏng FSM LED Cầu Thang. Trạng thái: CHỜ (IDLE).</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ====================================================================
+    // 1. CẤU TRÚC DỮ LIỆU & BIẾN MÔ PHỎNG (KHỚP 100% VỚI ESP8266 C++)
+    // ====================================================================
+    const STATE_IDLE = 0;
+    const STATE_RUN_UP = 1;
+    const STATE_RUN_DOWN = 2;
+    const STATE_RUN_BOTH = 3;
+    const STATE_HOLD = 4;
+    const STATE_OFF_UP = 5;
+    const STATE_OFF_DOWN = 6;
+    const STATE_OFF_BOTH = 7;
+
+    const STATE_NAMES = {
+      0: "STATE_IDLE",
+      1: "STATE_RUN_UP",
+      2: "STATE_RUN_DOWN",
+      3: "STATE_RUN_BOTH",
+      4: "STATE_HOLD",
+      5: "STATE_OFF_UP",
+      6: "STATE_OFF_DOWN",
+      7: "STATE_OFF_BOTH"
+    };
+
+    let config = {
+      number_step: 25,
+      t0: 150,
+      t1: 540,
+      t2: 5000,
+      mode: 1
+    };
+
+    let stair_state = STATE_IDLE;
+    let next_off_state = STATE_OFF_UP;
+    let current_led_mask = 0; // 32-bit unsigned bitmask
+    let step_idx = 0;
+    let step_idx2 = 0;
+    let fade_step = 0;
+    let last_step_time = 0;
+    let hold_start_time = 0;
+
+    let event_ss1_trigger = false;
+    let event_ss2_trigger = false;
+
+    // Demo variables
+    let demo_phase = 0;
+    let demo_step = 0;
+    let demo_last_time = 0;
+    let demo_flag = false;
+
+    // ====================================================================
+    // 2. LOGGING HELPER (Mô phỏng Serial.printf và Serial.println)
+    // ====================================================================
+    function logMessage(text, type = "fsm") {
+      const container = document.getElementById("log-container");
+      const line = document.createElement("div");
+      line.className = "log-line";
+
+      const now = new Date();
+      const timeStr = `[${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}.${String(Math.floor(now.getMilliseconds()/100))}]`;
+
+      let colorClass = "log-fsm";
+      if (type === "sensor") colorClass = "log-sensor";
+      else if (type === "on") colorClass = "log-on";
+      else if (type === "off") colorClass = "log-off";
+      else if (type === "hold") colorClass = "log-hold";
+
+      line.innerHTML = `<span class="log-time">${timeStr}</span> <span class="${colorClass}">${escapeHtml(text)}</span>`;
+      container.appendChild(line);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function clearLogs() {
+      document.getElementById("log-container").innerHTML = "";
+    }
+
+    // ====================================================================
+    // 3. HARDWARE SHIFT REGISTER 74HC595 SIMULATION
+    // ====================================================================
+    function shift595_set_mask(mask) {
+      current_led_mask = mask >>> 0;
+      updateVisuals();
+    }
+
+    function shift595_set_all(state) {
+      let mask = 0;
+      if (state) {
+        if (config.number_step >= 32) {
+          mask = 0xFFFFFFFF;
+        } else {
+          mask = ((1 << config.number_step) - 1) >>> 0;
+        }
+      }
+      shift595_set_mask(mask);
+    }
+
+    function cancelFadeOffAndRunUp() {
+      const N = config.number_step;
+      const t0 = config.t0;
+      stair_state = STATE_RUN_UP;
+      step_idx = 0;
+      fade_step = 0;
+      current_led_mask = (current_led_mask | (1 << step_idx)) >>> 0;
+      shift595_set_mask(current_led_mask);
+      last_step_time = performance.now();
+      next_off_state = STATE_OFF_UP;
+      logMessage(`[FSM] -> HỦY TẮT DẦN: Người mới đi lên -> Sáng dồn từ dưới lên (Bậc 1/${N}, t0=${t0}ms)`, "on");
+    }
+
+    function cancelFadeOffAndRunDown() {
+      const N = config.number_step;
+      const t0 = config.t0;
+      stair_state = STATE_RUN_DOWN;
+      step_idx = N - 1;
+      fade_step = 0;
+      current_led_mask = (current_led_mask | (1 << step_idx)) >>> 0;
+      shift595_set_mask(current_led_mask);
+      last_step_time = performance.now();
+      next_off_state = STATE_OFF_DOWN;
+      logMessage(`[FSM] -> HỦY TẮT DẦN: Người mới đi xuống -> Sáng dồn từ trên xuống (Bậc ${N}/${N}, t0=${t0}ms)`, "on");
+    }
+
+    function cancelFadeOffAndRunBoth() {
+      const N = config.number_step;
+      const t0 = config.t0;
+      stair_state = STATE_RUN_BOTH;
+      step_idx = 0;
+      step_idx2 = N - 1;
+      fade_step = 0;
+      current_led_mask = (current_led_mask | (1 << step_idx) | (1 << step_idx2)) >>> 0;
+      shift595_set_mask(current_led_mask);
+      last_step_time = performance.now();
+      next_off_state = STATE_OFF_BOTH;
+      logMessage(`[FSM] -> HỦY TẮT DẦN: Cả 2 hướng cùng đi -> Sáng dồn từ 2 phía vào giữa (t0=${t0}ms)`, "on");
+    }
+
+    // ====================================================================
+    // 4. MÁY TRẠNG THÁI FSM CHÍNH (KHỚP 100% updateStairStateMachine trong C++)
+    // ====================================================================
+    function updateStairStateMachine(now) {
+      const N = config.number_step;
+      const t0 = config.t0;
+      const t1 = config.t1;
+      const t2 = config.t2;
+
+      const trig1 = event_ss1_trigger;
+      const trig2 = event_ss2_trigger;
+      event_ss1_trigger = false;
+      event_ss2_trigger = false;
+
+      switch (stair_state) {
+        // -------------------------------------------------------------
+        // TRẠNG THÁI CHỜ: KHÔNG CÓ NGƯỜI
+        // -------------------------------------------------------------
+        case STATE_IDLE: {
+          if (trig1 && trig2) {
+            logMessage("[FSM] -> KÍCH HOẠT TRƯỜNG HỢP 3: Cả 2 cảm biến cùng phát hiện!");
+            stair_state = STATE_RUN_BOTH;
+            step_idx = 0;
+            step_idx2 = N - 1;
+            fade_step = 0;
+            current_led_mask = (((1 << step_idx) | (1 << step_idx2)) >>> 0);
+            shift595_set_mask(current_led_mask);
+            last_step_time = now;
+            next_off_state = STATE_OFF_BOTH;
+          } else if (trig1) {
+            logMessage("[FSM] -> KÍCH HOẠT TRƯỜNG HỢP 1: Đi từ dưới lên!");
+            stair_state = STATE_RUN_UP;
+            step_idx = 0;
+            fade_step = 0;
+            current_led_mask = ((1 << step_idx) >>> 0);
+            shift595_set_mask(current_led_mask);
+            logMessage(`[FSM] -> Bậc 1/${N} sáng (t0=${t0}ms)`, "on");
+            last_step_time = now;
+            next_off_state = STATE_OFF_UP;
+          } else if (trig2) {
+            logMessage("[FSM] -> KÍCH HOẠT TRƯỜNG HỢP 2: Đi từ trên xuống!");
+            stair_state = STATE_RUN_DOWN;
+            step_idx = N - 1;
+            fade_step = 0;
+            current_led_mask = ((1 << step_idx) >>> 0);
+            shift595_set_mask(current_led_mask);
+            logMessage(`[FSM] -> Bậc ${N}/${N} sáng (t0=${t0}ms)`, "on");
+            last_step_time = now;
+            next_off_state = STATE_OFF_DOWN;
+          }
+          break;
+        }
+
+        // -------------------------------------------------------------
+        // TRƯỜNG HỢP 1: ĐANG SÁNG DỒN TỪ DƯỚI LÊN (1 -> N, mỗi bậc t0)
+        // -------------------------------------------------------------
+        case STATE_RUN_UP: {
+          if (now - last_step_time >= t0) {
+            last_step_time = now;
+            step_idx++;
+            if (step_idx < N) {
+              current_led_mask = (current_led_mask | (1 << step_idx)) >>> 0;
+              shift595_set_mask(current_led_mask);
+              logMessage(`[FSM] -> Bậc ${step_idx + 1}/${N} sáng (t0=${t0}ms)`, "on");
+            } else {
+              shift595_set_all(true);
+              stair_state = STATE_HOLD;
+              hold_start_time = now;
+              next_off_state = STATE_OFF_UP;
+              logMessage(`[FSM] -> Sáng đủ ${N} bậc đi lên -> Chuyển sang GIỮ SÁNG t2=${t2}ms (HOLD)`, "hold");
+            }
+          }
+          break;
+        }
+
+        // -------------------------------------------------------------
+        // TRƯỜNG HỢP 2: ĐANG SÁNG DỒN TỪ TRÊN XUỐNG (N -> 1, mỗi bậc t0)
+        // -------------------------------------------------------------
+        case STATE_RUN_DOWN: {
+          if (now - last_step_time >= t0) {
+            last_step_time = now;
+            step_idx--;
+            if (step_idx >= 0) {
+              current_led_mask = (current_led_mask | (1 << step_idx)) >>> 0;
+              shift595_set_mask(current_led_mask);
+              logMessage(`[FSM] -> Bậc ${step_idx + 1}/${N} sáng (t0=${t0}ms)`, "on");
+            } else {
+              shift595_set_all(true);
+              stair_state = STATE_HOLD;
+              hold_start_time = now;
+              next_off_state = STATE_OFF_DOWN;
+              logMessage(`[FSM] -> Sáng đủ ${N} bậc đi xuống -> Chuyển sang GIỮ SÁNG t2=${t2}ms (HOLD)`, "hold");
+            }
+          }
+          break;
+        }
+
+        // -------------------------------------------------------------
+        // TRƯỜNG HỢP 3: ĐANG SÁNG DỒN TỪ CẢ HAI HƯỚNG VÀO TRUNG TÂM
+        // -------------------------------------------------------------
+        case STATE_RUN_BOTH: {
+          if (now - last_step_time >= t0) {
+            last_step_time = now;
+            step_idx++;
+            step_idx2--;
+
+            if (step_idx < N) current_led_mask = (current_led_mask | (1 << step_idx)) >>> 0;
+            if (step_idx2 >= 0) current_led_mask = (current_led_mask | (1 << step_idx2)) >>> 0;
+            shift595_set_mask(current_led_mask);
+            logMessage(`[FSM] -> Hai luồng sáng tiến vào tâm (Bậc ${step_idx + 1} và ${step_idx2 + 1})`, "on");
+
+            if (step_idx >= step_idx2) {
+              shift595_set_all(true);
+              stair_state = STATE_HOLD;
+              hold_start_time = now;
+              next_off_state = STATE_OFF_BOTH;
+              logMessage("[FSM] -> Sáng chạm LED trung tâm -> Chuyển sang GIỮ SÁNG t2 (HOLD)", "hold");
+            }
+          }
+          break;
+        }
+
+        // -------------------------------------------------------------
+        // -------------------------------------------------------------
+        // TRẠNG THÁI GIỮ SÁNG TOÀN BỘ (HOLD) TRONG THỜI GIAN t2
+        // -------------------------------------------------------------
+        case STATE_HOLD: {
+          // Chỉ gia hạn t2 nếu có người MỚI bước vào từ lối vào (không tính cảm biến ở lối ra)
+          if ((next_off_state === STATE_OFF_UP && trig1) ||
+              (next_off_state === STATE_OFF_DOWN && trig2) ||
+              (trig1 && trig2)) {
+            hold_start_time = now;
+            logMessage("[FSM] -> Có người mới bước vào lối vào khi đang giữ sáng -> Gia hạn thêm thời gian t2!", "hold");
+            if (trig1 && trig2) {
+              next_off_state = STATE_OFF_BOTH;
+            }
+          }
+
+          if (now - hold_start_time >= t2) {
+            stair_state = next_off_state;
+            last_step_time = now;
+            fade_step = 0;
+
+            const full_mask = (N >= 32) ? 0xFFFFFFFF : (((1 << N) - 1) >>> 0);
+            current_led_mask = full_mask;
+            shift595_set_mask(current_led_mask);
+
+            if (stair_state === STATE_OFF_UP) {
+              logMessage(`[FSM] -> Hết t2: Bắt đầu TẮT LẦN LƯỢT TỪ DƯỚI LÊN (1 -> ${N}, mỗi bậc tắt sau thời gian t1=${t1}ms)`, "off");
+            } else if (stair_state === STATE_OFF_DOWN) {
+              logMessage(`[FSM] -> Hết t2: Bắt đầu TẮT LẦN LƯỢT TỪ TRÊN XUỐNG (${N} -> 1, mỗi bậc tắt sau thời gian t1=${t1}ms)`, "off");
+            } else {
+              logMessage(`[FSM] -> Hết t2: Bắt đầu TẮT LẦN LƯỢT TỪ 2 PHÍA VÀO GIỮA (mỗi bậc tắt sau thời gian t1=${t1}ms)`, "off");
+            }
+          }
+          break;
+        }
+
+        // -------------------------------------------------------------
+        // TRƯỜNG HỢP 4: LED TẮT LẦN LƯỢT TỪ DƯỚI LÊN (1 -> N, mỗi bậc tắt sau t1)
+        // -------------------------------------------------------------
+        case STATE_OFF_UP: {
+          if (trig1 && trig2) {
+            cancelFadeOffAndRunBoth();
+            break;
+          } else if (trig1) {
+            cancelFadeOffAndRunUp();
+            break;
+          } else if (trig2) {
+            cancelFadeOffAndRunDown();
+            break;
+          }
+
+          if (now - last_step_time >= t1) {
+            last_step_time = now;
+            fade_step++;
+
+            if (fade_step <= N) {
+              current_led_mask = (current_led_mask & ~(1 << (fade_step - 1))) >>> 0;
+              shift595_set_mask(current_led_mask);
+
+              if (fade_step < N) {
+                logMessage(`[FSM] -> Bậc ${fade_step}/${N} TẮT (sau thời gian t1=${t1}ms, còn ${N - fade_step} bậc đang sáng)`, "off");
+              } else {
+                shift595_set_all(false);
+                stair_state = STATE_IDLE;
+                fade_step = 0;
+                logMessage(`[FSM] -> Bậc ${N}/${N} (bậc cuối cùng) TẮT -> Hoàn tất tắt lần lượt từ dưới lên, trở về trạng thái CHỜ (IDLE)`, "off");
+              }
+            }
+          }
+          break;
+        }
+
+        // -------------------------------------------------------------
+        // TRƯỜNG HỢP 5: LED TẮT LẦN LƯỢT TỪ TRÊN XUỐNG (N -> 1, mỗi bậc tắt sau t1)
+        // -------------------------------------------------------------
+        case STATE_OFF_DOWN: {
+          if (trig1 && trig2) {
+            cancelFadeOffAndRunBoth();
+            break;
+          } else if (trig1) {
+            cancelFadeOffAndRunUp();
+            break;
+          } else if (trig2) {
+            cancelFadeOffAndRunDown();
+            break;
+          }
+
+          if (now - last_step_time >= t1) {
+            last_step_time = now;
+            fade_step++;
+
+            if (fade_step <= N) {
+              current_led_mask = (current_led_mask & ~(1 << (N - fade_step))) >>> 0;
+              shift595_set_mask(current_led_mask);
+
+              if (fade_step < N) {
+                logMessage(`[FSM] -> Bậc ${N - fade_step + 1}/${N} TẮT (sau thời gian t1=${t1}ms, còn ${N - fade_step} bậc đang sáng)`, "off");
+              } else {
+                shift595_set_all(false);
+                stair_state = STATE_IDLE;
+                fade_step = 0;
+                logMessage(`[FSM] -> Bậc 1/${N} (bậc cuối cùng) TẮT -> Hoàn tất tắt lần lượt từ trên xuống, trở về trạng thái CHỜ (IDLE)`, "off");
+              }
+            }
+          }
+          break;
+        }
+
+        // -------------------------------------------------------------
+        // TRƯỜNG HỢP 6: LED TẮT LẦN LƯỢT TỪ 2 PHÍA VÀO GIỮA
+        // -------------------------------------------------------------
+        case STATE_OFF_BOTH: {
+          if (trig1 && trig2) {
+            cancelFadeOffAndRunBoth();
+            break;
+          } else if (trig1) {
+            cancelFadeOffAndRunUp();
+            break;
+          } else if (trig2) {
+            cancelFadeOffAndRunDown();
+            break;
+          }
+
+          if (now - last_step_time >= t1) {
+            last_step_time = now;
+            fade_step++;
+
+            const left_bit = fade_step - 1;
+            const right_bit = N - fade_step;
+
+            if (left_bit <= right_bit) {
+              current_led_mask = (current_led_mask & ~(1 << left_bit)) >>> 0;
+              current_led_mask = (current_led_mask & ~(1 << right_bit)) >>> 0;
+              shift595_set_mask(current_led_mask);
+
+              if (left_bit < right_bit) {
+                logMessage(`[FSM] -> Bậc ${left_bit + 1} và bậc ${right_bit + 1} TẮT (sau thời gian t1=${t1}ms, còn ${right_bit - left_bit - 1} bậc đang sáng)`, "off");
+              } else {
+                logMessage(`[FSM] -> Bậc tâm ${left_bit + 1} TẮT (sau thời gian t1=${t1}ms)`, "off");
+              }
+            } else {
+              shift595_set_all(false);
+              stair_state = STATE_IDLE;
+              fade_step = 0;
+              logMessage("[FSM] -> Hoàn tất tắt lần lượt 2 phía vào giữa, trở về trạng thái CHỜ (IDLE)", "off");
+            }
+          }
+          break;
+        }
+      }
+    }
+
+    // ====================================================================
+    // 5. HIỆU ỨNG DEMO (MODES 2 - 8)
+    // ====================================================================
+    function runDemoEffects(now) {
+      const N = config.number_step;
+      const t0 = config.t0;
+      const t1 = config.t1;
+      const t2 = config.t2;
+      const total_mask = (N >= 32) ? 0xFFFFFFFF : (((1 << N) - 1) >>> 0);
+
+      if (typeof window.last_sim_demo_mode === 'undefined' || window.last_sim_demo_mode !== config.mode) {
+        window.last_sim_demo_mode = config.mode;
+        demo_phase = 0;
+        demo_step = 0;
+        demo_last_time = now;
+        demo_flag = false;
+      }
+
+      switch (parseInt(config.mode)) {
+        case 2: // ALL ON
+          shift595_set_all(true);
+          break;
+
+        case 3: { // SANG DON LEN
+          if (demo_phase === 0) {
+            if (now - demo_last_time >= t0) {
+              demo_last_time = now;
+              demo_step++;
+              if (demo_step <= N) {
+                const m = (demo_step >= 32) ? 0xFFFFFFFF : (((1 << demo_step) - 1) >>> 0);
+                shift595_set_mask(m);
+              }
+              if (demo_step >= N) {
+                shift595_set_all(true);
+                demo_phase = 1;
+                demo_last_time = now;
+              }
+            }
+          } else if (demo_phase === 1) {
+            if (now - demo_last_time >= t2) {
+              demo_phase = 2;
+              demo_step = 0;
+              demo_last_time = now;
+            }
+          } else if (demo_phase === 2) {
+            if (now - demo_last_time >= t1) {
+              demo_last_time = now;
+              demo_step++;
+              if (demo_step <= N) {
+                let m = 0;
+                for (let i = demo_step; i < N; i++) m = (m | (1 << i)) >>> 0;
+                shift595_set_mask(m);
+              }
+              if (demo_step >= N) {
+                shift595_set_all(false);
+                demo_phase = 3;
+                demo_last_time = now;
+              }
+            }
+          } else if (demo_phase === 3) {
+            if (now - demo_last_time >= 500) {
+              demo_phase = 0;
+              demo_step = 0;
+              demo_last_time = now;
+            }
+          }
+          break;
+        }
+
+        case 4: { // SANG DON XUONG
+          if (demo_phase === 0) {
+            if (now - demo_last_time >= t0) {
+              demo_last_time = now;
+              demo_step++;
+              if (demo_step <= N) {
+                let m = 0;
+                for (let i = 0; i < demo_step; i++) m = (m | (1 << (N - 1 - i))) >>> 0;
+                shift595_set_mask(m);
+              }
+              if (demo_step >= N) {
+                shift595_set_all(true);
+                demo_phase = 1;
+                demo_last_time = now;
+              }
+            }
+          } else if (demo_phase === 1) {
+            if (now - demo_last_time >= t2) {
+              demo_phase = 2;
+              demo_step = 0;
+              demo_last_time = now;
+            }
+          } else if (demo_phase === 2) {
+            if (now - demo_last_time >= t1) {
+              demo_last_time = now;
+              demo_step++;
+              if (demo_step <= N) {
+                let m = 0;
+                for (let i = 0; i < N - demo_step; i++) m = (m | (1 << i)) >>> 0;
+                shift595_set_mask(m);
+              }
+              if (demo_step >= N) {
+                shift595_set_all(false);
+                demo_phase = 3;
+                demo_last_time = now;
+              }
+            }
+          } else if (demo_phase === 3) {
+            if (now - demo_last_time >= 500) {
+              demo_phase = 0;
+              demo_step = 0;
+              demo_last_time = now;
+            }
+          }
+          break;
+        }
+
+        case 5: { // SAO BANG
+          // Tự động căn chỉnh tham số thời gian tối ưu đẹp nhất:
+          // - Tốc độ lướt: 45ms/bậc (vệt sao băng lướt nhanh, mượt)
+          // - Đuôi sao băng: 4-5 LED
+          // - Khoảng nghỉ: 450ms giữa 2 đợt
+          const METEOR_SPEED = 45;
+          const METEOR_PAUSE = 450;
+          const tail_len = (N >= 20) ? 5 : 4;
+
+          if (demo_phase === 0) {
+            if (now - demo_last_time >= METEOR_SPEED) {
+              demo_last_time = now;
+              demo_step++;
+              if (demo_step < N + tail_len) {
+                let m = 0;
+                for (let k = 0; k < tail_len; k++) {
+                  let pos = demo_step - k;
+                  if (pos >= 0 && pos < N) m = (m | (1 << pos)) >>> 0;
+                }
+                shift595_set_mask(m);
+              } else {
+                shift595_set_all(false);
+                demo_phase = 1;
+                demo_last_time = now;
+              }
+            }
+          } else {
+            if (now - demo_last_time >= METEOR_PAUSE) {
+              demo_phase = 0;
+              demo_step = 0;
+              demo_last_time = now;
+            }
+          }
+          break;
+        }
+
+        case 6: { // NHAP NHAY
+          if (now - demo_last_time >= 350) {
+            demo_last_time = now;
+            demo_flag = !demo_flag;
+            shift595_set_all(demo_flag);
+          }
+          break;
+        }
+
+        case 7: { // SO LE
+          const rate = t0 < 100 ? 250 : t0 * 2;
+          if (now - demo_last_time >= rate) {
+            demo_last_time = now;
+            demo_flag = !demo_flag;
+            if (demo_flag) {
+              shift595_set_mask((0x55555555 & total_mask) >>> 0);
+            } else {
+              shift595_set_mask((0xAAAAAAAA & total_mask) >>> 0);
+            }
+          }
+          break;
+        }
+
+        case 8: // ALL OFF
+          shift595_set_all(false);
+          break;
+      }
+    }
+
+    // ====================================================================
+    // 6. RENDER GIAO DIỆN & CẬP NHẬT TRỰC QUAN
+    // ====================================================================
+    function renderStairsList() {
+      const container = document.getElementById("stairs-list");
+      const N = config.number_step;
+      container.innerHTML = "";
+
+      // Render từ bậc cao nhất (N) xuống bậc thấp nhất (1)
+      for (let i = N; i >= 1; i--) {
+        const icNum = Math.ceil(i / 8);
+        const row = document.createElement("div");
+        row.className = "step-row";
+        row.id = `step-row-${i}`;
+        row.innerHTML = `
+          <div class="step-num" style="width: 80px;">Bậc ${i} <span style="font-size: 10px; color: #64748b;">(IC${icNum})</span></div>
+          <div class="step-led-track">
+            <div class="step-led-core"></div>
+          </div>
+          <div class="step-state-badge" id="badge-${i}">OFF</div>
+        `;
+        container.appendChild(row);
+      }
+      document.getElementById("disp-total-steps").innerText = N;
+      updateVisuals();
+    }
+
+    function updateVisuals() {
+      const N = config.number_step;
+      let litCount = 0;
+
+      for (let i = 1; i <= N; i++) {
+        const bitIndex = i - 1;
+        const isLit = ((current_led_mask >>> bitIndex) & 1) === 1;
+        const row = document.getElementById(`step-row-${i}`);
+        const badge = document.getElementById(`badge-${i}`);
+
+        if (row) {
+          if (isLit) {
+            row.classList.add("is-lit");
+            litCount++;
+            if (badge) badge.innerText = "ON";
+          } else {
+            row.classList.remove("is-lit");
+            if (badge) badge.innerText = "OFF";
+          }
+        }
+      }
+
+      // Cập nhật thống kê
+      document.getElementById("disp-active-count").innerText = `${litCount} / ${N} sáng`;
+      document.getElementById("stat-led-on").innerText = `${litCount} / ${N} bậc`;
+      document.getElementById("mask-hex").innerText = "0x" + current_led_mask.toString(16).toUpperCase().padStart(8, '0');
+
+      // Cập nhật FSM Badge
+      const fsmBadge = document.getElementById("fsm-badge");
+      fsmBadge.innerText = STATE_NAMES[stair_state] || "UNKNOWN";
+      fsmBadge.className = "state-pill";
+
+      if (stair_state === STATE_IDLE) fsmBadge.classList.add("state-idle");
+      else if (stair_state === STATE_RUN_UP) fsmBadge.classList.add("state-run-up");
+      else if (stair_state === STATE_RUN_DOWN) fsmBadge.classList.add("state-run-down");
+      else if (stair_state === STATE_RUN_BOTH) fsmBadge.classList.add("state-run-both");
+      else if (stair_state === STATE_HOLD) fsmBadge.classList.add("state-hold");
+      else fsmBadge.classList.add("state-off");
+
+      // Cập nhật hướng tắt tiếp theo
+      const nextOffEl = document.getElementById("stat-next-off");
+      if (next_off_state === STATE_OFF_UP) nextOffEl.innerText = "TẮT DƯỚI LÊN (1 -> N)";
+      else if (next_off_state === STATE_OFF_DOWN) nextOffEl.innerText = "TẮT TRÊN XUỐNG (N -> 1)";
+      else nextOffEl.innerText = "TẮT 2 PHÍA VÀO GIỮA";
+
+      // Cập nhật thanh đếm ngược HOLD
+      const holdContainer = document.getElementById("hold-container");
+      if (stair_state === STATE_HOLD && config.mode == 1) {
+        holdContainer.style.display = "block";
+        const elapsed = performance.now() - hold_start_time;
+        const remain = Math.max(0, config.t2 - elapsed);
+        const pct = Math.min(100, (remain / config.t2) * 100);
+        document.getElementById("hold-bar-fill").style.width = pct + "%";
+        document.getElementById("hold-timer-text").innerText = `${Math.ceil(remain)} ms`;
+      } else {
+        holdContainer.style.display = "none";
+      }
+    }
+
+    // ====================================================================
+    // 7. USER INTERACTION HANDLERS (Nút Test & Sensor)
+    // ====================================================================
+    function triggerSensor(sensorNum) {
+      if (config.mode != 1) {
+        config.mode = 1;
+        document.getElementById("sel-mode").value = 1;
+        logMessage("[HỆ THỐNG] Chuyển về chế độ Cảm biến thông minh!");
+      }
+
+      if (sensorNum === 1) {
+        event_ss1_trigger = true;
+        flashSensorNode("sensor-bot-node");
+        logMessage("[SENSOR] -> Kích hoạt Cảm biến DƯỚI (SS1)!", "sensor");
+      } else {
+        event_ss2_trigger = true;
+        flashSensorNode("sensor-top-node");
+        logMessage("[SENSOR] -> Kích hoạt Cảm biến TRÊN (SS2)!", "sensor");
+      }
+    }
+
+    function triggerBothSensors() {
+      if (config.mode != 1) {
+        config.mode = 1;
+        document.getElementById("sel-mode").value = 1;
+      }
+      event_ss1_trigger = true;
+      event_ss2_trigger = true;
+      flashSensorNode("sensor-bot-node");
+      flashSensorNode("sensor-top-node");
+      logMessage("[SENSOR] -> Kích hoạt ĐỒNG THỜI CẢ 2 CẢM BIẾN (SS1 + SS2)!", "sensor");
+    }
+
+    function triggerExitPass() {
+      // Mô phỏng người đi đến bậc cuối và chạm cảm biến lối ra
+      if (stair_state === STATE_RUN_UP) {
+        triggerSensor(2);
+      } else if (stair_state === STATE_RUN_DOWN) {
+        triggerSensor(1);
+      } else {
+        logMessage("[SENSOR] Lối ra chỉ tác động khi đang trong quá trình đi cầu thang.");
+      }
+    }
+
+    function triggerReset() {
+      stair_state = STATE_IDLE;
+      fade_step = 0;
+      shift595_set_all(false);
+      logMessage("[HỆ THỐNG] Đã reset về trạng thái CHỜ (IDLE), tắt toàn bộ LED.", "off");
+    }
+
+    function flashSensorNode(nodeId) {
+      const node = document.getElementById(nodeId);
+      node.classList.add("active");
+      setTimeout(() => { node.classList.remove("active"); }, 400);
+    }
+
+    // ====================================================================
+    // 8. CONFIGURATION CONTROLS
+    // ====================================================================
+    function onConfigChange() {
+      const oldN = config.number_step;
+      config.number_step = parseInt(document.getElementById("input-n").value);
+      config.t0 = parseInt(document.getElementById("input-t0").value);
+      config.t1 = parseInt(document.getElementById("input-t1").value);
+      config.t2 = parseInt(document.getElementById("input-t2").value);
+
+      document.getElementById("val-n").innerText = config.number_step;
+      document.getElementById("val-t0").innerText = config.t0 + " ms";
+      document.getElementById("val-t1").innerText = config.t1 + " ms";
+      document.getElementById("val-t2").innerText = config.t2 + " ms";
+
+      if (oldN !== config.number_step) {
+        renderStairsList();
+        triggerReset();
+      }
+    }
+
+    function onModeChange() {
+      config.mode = parseInt(document.getElementById("sel-mode").value);
+      demo_phase = 0;
+      demo_step = 0;
+      demo_last_time = performance.now();
+      demo_flag = false;
+      triggerReset();
+      logMessage(`[HỆ THỐNG] Chuyển sang chế độ: ${document.getElementById("sel-mode").selectedOptions[0].text}`);
+    }
+
+    function applyPreset(t0, t1, t2, n) {
+      document.getElementById("input-t0").value = t0;
+      document.getElementById("input-t1").value = t1;
+      document.getElementById("input-t2").value = t2;
+      document.getElementById("input-n").value = n;
+      onConfigChange();
+      logMessage(`[CẤU HÌNH] Đã áp dụng Preset: t0=${t0}ms, t1=${t1}ms, t2=${t2}ms, N=${n} bậc`);
+    }
+
+    // ====================================================================
+    // 9. VÒNG LẶP MÔ PHỎNG LOOP() (Tương đương loop() trên ESP8266)
+    // ====================================================================
+    function mainLoop(timestamp) {
+      if (config.mode == 1) {
+        updateStairStateMachine(timestamp);
+      } else {
+        runDemoEffects(timestamp);
+      }
+      updateVisuals();
+      requestAnimationFrame(mainLoop);
+    }
+
+    // Khởi tạo ban đầu
+    renderStairsList();
+    requestAnimationFrame(mainLoop);
+  </script>
+</body>
+</html>
