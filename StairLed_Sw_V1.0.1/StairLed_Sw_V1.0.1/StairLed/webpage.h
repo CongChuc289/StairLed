@@ -243,7 +243,7 @@ const char webpage[] PROGMEM = R"rawliteral(
 
     <!-- Thẻ 1: Nút Test mô phỏng các kịch bản -->
     <div class="card">
-      <div class="card-title">🧪 Thử nghiệm kịch bản (Test)</div>
+      <div class="card-title">🧪 Test Cảm Biến</div>
       <div class="btn-group">
         <button class="btn btn-primary" onclick="triggerTest('up')">⬆ Đi từ dưới lên</button>
         <button class="btn btn-primary" onclick="triggerTest('down')">⬇ Đi từ trên xuống</button>
@@ -269,16 +269,17 @@ const char webpage[] PROGMEM = R"rawliteral(
             <option value="6">6. Chớp nháy đồng bộ</option>
             <option value="7">7. Sáng, tắt so le chẵn lẻ</option>
             <option value="8">8. Tắt toàn bộ LED</option>
+            <option value="9">9. Chạy toàn bộ các chế độ</option>
           </select>
         </div>
 
         <!-- Số bậc cầu thang -->
         <div class="form-group">
           <div class="form-label">
-            <span>Số bậc cầu thang:</span>
+            <span>Số bậc cầu thang (tối đa 27 bậc):</span>
             <span class="form-val" id="val-number_step">25</span>
           </div>
-          <input type="range" id="number_step" name="number_step" min="1" max="32" value="25" oninput="updateRangeVal('number_step', '')">
+          <input type="range" id="number_step" name="number_step" min="1" max="27" value="25" oninput="updateRangeVal('number_step', '')">
         </div>
 
         <!-- Thời gian sáng từng bậc t0 -->

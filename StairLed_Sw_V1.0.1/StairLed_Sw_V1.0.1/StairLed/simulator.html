@@ -554,6 +554,7 @@
                 <option value="6">6. Demo Chớp nháy đồng bộ</option>
                 <option value="7">7. Demo Sáng tắt so le chẵn lẻ</option>
                 <option value="8">8. Tắt toàn bộ</option>
+                <option value="9">9. Chạy toàn bộ các chế độ</option>
               </select>
             </div>
 
@@ -563,7 +564,7 @@
                 <span>Số bậc cầu thang (N):</span>
                 <span class="form-val" id="val-n">25</span>
               </div>
-              <input type="range" id="input-n" min="1" max="32" value="25" oninput="onConfigChange()">
+              <input type="range" id="input-n" min="1" max="27" value="25" oninput="onConfigChange()">
             </div>
 
             <!-- Thời gian sáng từng bậc t0 -->
@@ -1201,6 +1202,213 @@
               shift595_set_mask((0x55555555 & total_mask) >>> 0);
             } else {
               shift595_set_mask((0xAAAAAAAA & total_mask) >>> 0);
+            }
+          }
+          break;
+        }
+
+        case 9: { // AUTO DEMO CYCLE
+          if (typeof window.sim_auto_sub === 'undefined') {
+            window.sim_auto_sub = 0;
+            window.sim_auto_cnt = 0;
+          }
+          if (window.last_sim_demo_mode !== 9) {
+            window.sim_auto_sub = 0;
+            window.sim_auto_cnt = 0;
+            demo_phase = 0;
+            demo_step = 0;
+            demo_last_time = now;
+            demo_flag = false;
+            shift595_set_all(false);
+          }
+
+          switch (window.sim_auto_sub) {
+            case 0: { // Sang don len
+              if (demo_phase === 0) {
+                if (now - demo_last_time >= t0) {
+                  demo_last_time = now;
+                  demo_step++;
+                  if (demo_step <= N) {
+                    const m = (demo_step >= 32) ? 0xFFFFFFFF : (((1 << demo_step) - 1) >>> 0);
+                    shift595_set_mask(m);
+                  }
+                  if (demo_step >= N) {
+                    shift595_set_all(true);
+                    demo_phase = 1;
+                    demo_last_time = now;
+                  }
+                }
+              } else if (demo_phase === 1) {
+                const hold = (t2 > 2500) ? 2500 : t2;
+                if (now - demo_last_time >= hold) {
+                  demo_phase = 2;
+                  demo_step = 0;
+                  demo_last_time = now;
+                }
+              } else if (demo_phase === 2) {
+                if (now - demo_last_time >= t1) {
+                  demo_last_time = now;
+                  demo_step++;
+                  if (demo_step <= N) {
+                    let m = 0;
+                    for (let i = demo_step; i < N; i++) m = (m | (1 << i)) >>> 0;
+                    shift595_set_mask(m);
+                  }
+                  if (demo_step >= N) {
+                    shift595_set_all(false);
+                    demo_phase = 3;
+                    demo_last_time = now;
+                  }
+                }
+              } else if (demo_phase === 3) {
+                if (now - demo_last_time >= 400) {
+                  window.sim_auto_sub = 1;
+                  demo_phase = 0;
+                  demo_step = 0;
+                  demo_last_time = now;
+                  shift595_set_all(false);
+                }
+              }
+              break;
+            }
+
+            case 1: { // Sang don xuong
+              if (demo_phase === 0) {
+                if (now - demo_last_time >= t0) {
+                  demo_last_time = now;
+                  demo_step++;
+                  if (demo_step <= N) {
+                    let m = 0;
+                    for (let i = 0; i < demo_step; i++) m = (m | (1 << (N - 1 - i))) >>> 0;
+                    shift595_set_mask(m);
+                  }
+                  if (demo_step >= N) {
+                    shift595_set_all(true);
+                    demo_phase = 1;
+                    demo_last_time = now;
+                  }
+                }
+              } else if (demo_phase === 1) {
+                const hold = (t2 > 2500) ? 2500 : t2;
+                if (now - demo_last_time >= hold) {
+                  demo_phase = 2;
+                  demo_step = 0;
+                  demo_last_time = now;
+                }
+              } else if (demo_phase === 2) {
+                if (now - demo_last_time >= t1) {
+                  demo_last_time = now;
+                  demo_step++;
+                  if (demo_step <= N) {
+                    let m = 0;
+                    for (let i = 0; i < N - demo_step; i++) m = (m | (1 << i)) >>> 0;
+                    shift595_set_mask(m);
+                  }
+                  if (demo_step >= N) {
+                    shift595_set_all(false);
+                    demo_phase = 3;
+                    demo_last_time = now;
+                  }
+                }
+              } else if (demo_phase === 3) {
+                if (now - demo_last_time >= 400) {
+                  window.sim_auto_sub = 2;
+                  window.sim_auto_cnt = 0;
+                  demo_phase = 0;
+                  demo_step = 0;
+                  demo_last_time = now;
+                  shift595_set_all(false);
+                }
+              }
+              break;
+            }
+
+            case 2: { // Sao bang (3 dot)
+              const METEOR_SPEED = 45;
+              const METEOR_PAUSE = 400;
+              const tail_len = (N >= 20) ? 5 : 4;
+              if (demo_phase === 0) {
+                if (now - demo_last_time >= METEOR_SPEED) {
+                  demo_last_time = now;
+                  demo_step++;
+                  if (demo_step < N + tail_len) {
+                    let m = 0;
+                    for (let k = 0; k < tail_len; k++) {
+                      let pos = demo_step - k;
+                      if (pos >= 0 && pos < N) m = (m | (1 << pos)) >>> 0;
+                    }
+                    shift595_set_mask(m);
+                  } else {
+                    shift595_set_all(false);
+                    demo_phase = 1;
+                    demo_last_time = now;
+                    window.sim_auto_cnt++;
+                  }
+                }
+              } else {
+                if (now - demo_last_time >= METEOR_PAUSE) {
+                  if (window.sim_auto_cnt >= 3) {
+                    window.sim_auto_sub = 3;
+                    window.sim_auto_cnt = 0;
+                    demo_phase = 0;
+                    demo_step = 0;
+                    demo_last_time = now;
+                    demo_flag = false;
+                    shift595_set_all(false);
+                  } else {
+                    demo_phase = 0;
+                    demo_step = 0;
+                    demo_last_time = now;
+                  }
+                }
+              }
+              break;
+            }
+
+            case 3: { // So le (8 nhip)
+              const rate = (t0 < 100) ? 250 : (t0 > 400 ? 400 : t0 * 2);
+              if (now - demo_last_time >= rate) {
+                demo_last_time = now;
+                demo_flag = !demo_flag;
+                shift595_set_mask(demo_flag ? ((0x55555555 & total_mask) >>> 0) : ((0xAAAAAAAA & total_mask) >>> 0));
+                window.sim_auto_cnt++;
+                if (window.sim_auto_cnt >= 8) {
+                  window.sim_auto_sub = 4;
+                  window.sim_auto_cnt = 0;
+                  demo_last_time = now;
+                  demo_flag = false;
+                  shift595_set_all(false);
+                }
+              }
+              break;
+            }
+
+            case 4: { // Chop nhay (6 nhip)
+              if (now - demo_last_time >= 350) {
+                demo_last_time = now;
+                demo_flag = !demo_flag;
+                shift595_set_all(demo_flag);
+                window.sim_auto_cnt++;
+                if (window.sim_auto_cnt >= 6) {
+                  window.sim_auto_sub = 5;
+                  demo_last_time = now;
+                  shift595_set_all(true);
+                }
+              }
+              break;
+            }
+
+            case 5: { // Sang toan bo 2.5s roi quay lai
+              if (now - demo_last_time >= 2500) {
+                window.sim_auto_sub = 0;
+                window.sim_auto_cnt = 0;
+                demo_phase = 0;
+                demo_step = 0;
+                demo_last_time = now;
+                demo_flag = false;
+                shift595_set_all(false);
+              }
+              break;
             }
           }
           break;

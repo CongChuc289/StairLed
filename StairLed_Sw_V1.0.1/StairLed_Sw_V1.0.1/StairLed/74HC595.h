@@ -18,7 +18,9 @@
 #define PIN_BT1   D5  // Nút nhấn vật lý 1 (GPIO5)
 #define PIN_BT2   D6  // Nút nhấn vật lý 2 (GPIO4)
 
-#define MAX_STEPS 32
+// Cấu hình số bậc cầu thang tối đa: Cố định tối đa 27 bậc
+#define MAX_STEPS 27
+#define BUFFER_SIZE ((MAX_STEPS + 7) / 8) // Số byte bộ đệm (27 bậc = 4 bytes / 4 IC 74HC595)
 #define EEPROM_MAGIC 0x5968  // Mã nhận diện cấu hình EEPROM hợp lệ (Cập nhật t0, t1, t2)
 
 // Các chế độ hoạt động chính
@@ -30,7 +32,8 @@ enum RunMode {
   MODE_SAO_BANG,         // Demo: Hiệu ứng sao băng / rượt đuổi
   MODE_NHAP_NHAY,        // Demo: Hiệu ứng chớp nháy đồng bộ (Blink)
   MODE_SO_LE,            // Demo: Hiệu ứng sáng tắt so le chẵn lẻ
-  MODE_ALL_OFF           // Tắt toàn bộ
+  MODE_ALL_OFF,          // Tắt toàn bộ
+  MODE_AUTO_DEMO         // Chế độ 9: Chạy toàn bộ các chế độ
 };
 
 // Trạng thái máy hữu hạn FSM cho điều khiển LED cầu thang thông minh
@@ -48,7 +51,7 @@ enum StairState {
 // Cấu trúc dữ liệu cấu hình lưu vào EEPROM
 struct ConfigData {
   uint16_t magic;              // Magic number kiểm tra dữ liệu khởi tạo
-  uint8_t  number_step;        // Số bậc cầu thang (tương ứng số LED, 1 đến 32)
+  uint8_t  number_step;        // Số bậc cầu thang (tương ứng số LED, 1 đến MAX_STEPS)
   uint16_t t0;                 // Thời gian sáng từng bậc t0 (ms)
   uint16_t t1;                 // Thời gian tắt từng bậc t1 (ms)
   uint16_t t2;                 // Thời gian sáng sau khi rời cầu thang t2 (ms)
@@ -56,15 +59,16 @@ struct ConfigData {
 };
 
 extern ConfigData config;
-extern uint32_t current_led_mask;
+extern uint8_t led_buffer[BUFFER_SIZE];
 
-// Các hàm điều khiển 74HC595 (Cố định phần cứng mức 1 sáng LED)
+// Các hàm điều khiển 74HC595 hỗ trợ mở rộng số bậc tùy ý (Mức 1 sáng LED)
 void shift595_init(void);
-void shift595_write32(uint32_t mask, bool force = false);
-void shift595_set_mask(uint32_t mask);
-void shift595_set_pin(uint8_t pin, bool state);
+void shift595_update(bool force = false);
+void shift595_set_pin(uint8_t pin, bool state, bool auto_update = true);
 void shift595_set_all(bool state);
-uint32_t shift595_get_mask(void);
+void shift595_clear_all(void);
+bool shift595_get_pin(uint8_t pin);
+void shift595_set_mask32(uint32_t mask, bool force = false); // Hàm tương thích 32-bit cũ
 
 // Hàm cấu hình EEPROM
 void eeprom_init_and_load(void);

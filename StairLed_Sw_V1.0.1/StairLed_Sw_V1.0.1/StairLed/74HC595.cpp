@@ -2,9 +2,9 @@
 #include <EEPROM.h>
 
 ConfigData config;
-uint32_t current_led_mask = 0;
+uint8_t led_buffer[BUFFER_SIZE] = {0};
 
-static uint32_t last_hw_mask = 0xFFFFFFFF;
+static uint8_t last_hw_buffer[BUFFER_SIZE] = {0xFF};
 static bool hw_initialized = false;
 
 void shift595_init(void) {
@@ -16,89 +16,117 @@ void shift595_init(void) {
   digitalWrite(PIN_CLK, LOW);
   digitalWrite(PIN_DATA, LOW);
 
-  // Khởi tạo ban đầu: tắt toàn bộ 32 LED, bắt buộc ghi ra phần cứng
+  // Khởi tạo ban đầu: tắt toàn bộ các bậc, bắt buộc ghi ra phần cứng
   hw_initialized = false;
-  current_led_mask = 0;
-  shift595_write32(0, true);
+  memset(led_buffer, 0, sizeof(led_buffer));
+  memset(last_hw_buffer, 0xFF, sizeof(last_hw_buffer));
+  shift595_update(true);
 }
 
 // ====================================================================
-// XUẤT 32 BIT RA 4 IC 74HC595 MẮC NỐI TIẾP (DAISY-CHAIN)
-// Phân chia 4 IC điều khiển 32 bậc LED:
-//   - IC1 (U1): Bậc 1  đến Bậc 8  (Bit 0  .. Bit 7 , ngõ ra O0_HC  .. O7_HC )
-//   - IC2 (U2): Bậc 9  đến Bậc 16 (Bit 8  .. Bit 15, ngõ ra O8_HC  .. O15_HC)
-//   - IC3 (U3): Bậc 17 đến Bậc 24 (Bit 16 .. Bit 23, ngõ ra O16_HC .. O23_HC)
-//   - IC4 (U4): Bậc 25 đến Bậc 32 (Bit 24 .. Bit 31, ngõ ra O24_HC .. O31_HC)
+// XUẤT BUFFER RA CÁC IC 74HC595 MẮC NỐI TIẾP (DAISY-CHAIN)
+// Hỗ trợ số bậc tùy ý (tối đa MAX_STEPS bậc):
+//   - IC1: Bậc 1..8   (Bit 0..7  của Byte 0)
+//   - IC2: Bậc 9..16  (Bit 0..7  của Byte 1)
+//   - IC3: Bậc 17..24 (Bit 0..7  của Byte 2)
+//   - IC4: Bậc 25..32 (Bit 0..7  của Byte 3)
+//   - IC mở rộng 5..N: Bậc 33..MAX_STEPS (Byte 4..BUFFER_SIZE-1)
 //
+// Cơ chế Daisy-Chain: IC cuối cùng trong chuỗi sẽ nhận các bit được dịch vào ĐẦU TIÊN.
+// Do đó ta dịch từ Byte cao nhất xuống Byte 0, trong mỗi byte dịch từ Bit 7 xuống Bit 0.
 // Cố định phần cứng: Mức 1 (HIGH) mở MOSFET dẫn sáng LED
-// Có timing delayMicroseconds chuẩn đảm bảo xung vuông 250kHz, chống trượt xung
-// Tối ưu hóa: Bỏ qua ghi nếu trạng thái mask không thay đổi -> Giảm 100% CPU lock
+// Timing delayMicroseconds(2) chuẩn xung vuông 250kHz, chống trượt xung khi nối tầng dài
+// Tối ưu hóa: Bỏ qua ghi nếu trạng thái buffer không thay đổi -> Giảm 100% CPU lock
 // ====================================================================
-void shift595_write32(uint32_t mask, bool force) {
-  current_led_mask = mask;
-
+void shift595_update(bool force) {
   // Nếu dữ liệu không đổi và không bắt buộc cập nhật, thoát ngay lập tức
-  if (hw_initialized && !force && mask == last_hw_mask) {
+  if (hw_initialized && !force && memcmp(led_buffer, last_hw_buffer, BUFFER_SIZE) == 0) {
     return;
   }
-  last_hw_mask = mask;
+  memcpy(last_hw_buffer, led_buffer, BUFFER_SIZE);
   hw_initialized = true;
 
+  // Luôn quét đủ BUFFER_SIZE bytes để đảm bảo tất cả IC trên chuỗi (kể cả IC mở rộng)
+  // đều được cập nhật đúng và xóa sạch các chân không dùng đến.
   digitalWrite(PIN_LAT, LOW);
   delayMicroseconds(2);
 
-  // Dịch 32 bit từ MSB (bit 31) đến LSB (bit 0):
-  for (int8_t b = 31; b >= 0; b--) {
-    bool bitVal = (mask >> b) & 0x01;
-    digitalWrite(PIN_DATA, bitVal ? HIGH : LOW);
-    delayMicroseconds(2);
-    digitalWrite(PIN_CLK, HIGH);
-    delayMicroseconds(2);
-    digitalWrite(PIN_CLK, LOW);
-    delayMicroseconds(2);
+  for (int8_t i = BUFFER_SIZE - 1; i >= 0; i--) {
+    uint8_t b = led_buffer[i];
+    for (int8_t bit = 7; bit >= 0; bit--) {
+      bool bitVal = (b >> bit) & 0x01;
+      digitalWrite(PIN_DATA, bitVal ? HIGH : LOW);
+      delayMicroseconds(2);
+      digitalWrite(PIN_CLK, HIGH);
+      delayMicroseconds(2);
+      digitalWrite(PIN_CLK, LOW);
+      delayMicroseconds(2);
+    }
   }
 
-  // Chốt dữ liệu ra output của cả 4 IC 74HC595 đồng thời
+  // Chốt dữ liệu ra output của toàn bộ các IC 74HC595 đồng thời
   digitalWrite(PIN_LAT, HIGH);
   delayMicroseconds(5);
   digitalWrite(PIN_LAT, LOW);
   delayMicroseconds(2);
 }
 
-void shift595_set_mask(uint32_t mask) {
-  shift595_write32(mask);
+void shift595_set_pin(uint8_t pin, bool state, bool auto_update) {
+  if (pin >= MAX_STEPS) return;
+  uint8_t byte_idx = pin / 8;
+  uint8_t bit_idx = pin % 8;
+
+  if (state) {
+    led_buffer[byte_idx] |= (1 << bit_idx);
+  } else {
+    led_buffer[byte_idx] &= ~(1 << bit_idx);
+  }
+
+  if (auto_update) {
+    shift595_update();
+  }
 }
 
-void shift595_set_pin(uint8_t pin, bool state) {
-  if (pin >= MAX_STEPS) return;
-  if (state) {
-    current_led_mask |= ((uint32_t)1 << pin);
-  } else {
-    current_led_mask &= ~((uint32_t)1 << pin);
-  }
-  shift595_write32(current_led_mask);
+bool shift595_get_pin(uint8_t pin) {
+  if (pin >= MAX_STEPS) return false;
+  uint8_t byte_idx = pin / 8;
+  uint8_t bit_idx = pin % 8;
+  return (led_buffer[byte_idx] & (1 << bit_idx)) != 0;
 }
 
 void shift595_set_all(bool state) {
-  uint32_t mask = 0;
-  if (state) {
-    if (config.number_step >= MAX_STEPS) {
-      mask = 0xFFFFFFFF;
-    } else {
-      mask = ((uint32_t)1 << config.number_step) - 1;
+  if (!state) {
+    memset(led_buffer, 0, sizeof(led_buffer));
+  } else {
+    memset(led_buffer, 0, sizeof(led_buffer));
+    uint8_t N = config.number_step;
+    if (N > MAX_STEPS) N = MAX_STEPS;
+    for (uint8_t i = 0; i < N; i++) {
+      led_buffer[i / 8] |= (1 << (i % 8));
     }
   }
-  shift595_write32(mask);
+  shift595_update();
 }
 
-uint32_t shift595_get_mask(void) {
-  return current_led_mask;
+void shift595_clear_all(void) {
+  memset(led_buffer, 0, sizeof(led_buffer));
+  shift595_update();
+}
+
+// Hàm tương thích ngược khi nhận mask 32-bit (dành cho các mã kiểm tra cũ)
+void shift595_set_mask32(uint32_t mask, bool force) {
+  memset(led_buffer, 0, sizeof(led_buffer));
+  led_buffer[0] = mask & 0xFF;
+  led_buffer[1] = (mask >> 8) & 0xFF;
+  led_buffer[2] = (mask >> 16) & 0xFF;
+  led_buffer[3] = (mask >> 24) & 0xFF;
+  shift595_update(force);
 }
 
 // Quản lý EEPROM
 void eeprom_reset_defaults(void) {
   config.magic = EEPROM_MAGIC;
-  config.number_step = 25;       // Mặc định 25 bậc (hỗ trợ điều chỉnh 1-32)
+  config.number_step = 25;       // Mặc định 25 bậc (hỗ trợ điều chỉnh 1 đến MAX_STEPS)
   config.t0 = 150;               // t0: Thời gian sáng từng bậc (ms)
   config.t1 = 150;               // t1: Thời gian tắt từng bậc (ms)
   config.t2 = 5000;              // t2: Thời gian sáng sau khi rời cầu thang (ms)
@@ -132,6 +160,10 @@ void eeprom_init_and_load(void) {
     }
     if (config.t2 < 500 || config.t2 > 60000) {
       config.t2 = 5000;
+      need_re_save = true;
+    }
+    if (config.mode < 1 || config.mode > 9) {
+      config.mode = MODE_SMART_SENSOR;
       need_re_save = true;
     }
     if (need_re_save) {

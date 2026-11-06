@@ -146,9 +146,12 @@ void setup() {
 
   // Hiệu ứng khởi động nhẹ
   for (uint8_t i = 0; i < 3; i++) {
-    shift595_set_mask(0x0000000F);
+    for (uint8_t b = 0; b < 4 && b < config.number_step; b++) {
+      shift595_set_pin(b, true, false);
+    }
+    shift595_update();
     delay(70);
-    shift595_set_mask(0x00000000);
+    shift595_clear_all();
     delay(70);
   }
 }
@@ -265,13 +268,13 @@ void handlePhysicalButtons() {
 // ====================================================================
 void cancelFadeOffAndRunUp() {
   uint8_t N = config.number_step;
-  if (N == 0 || N > MAX_STEPS) N = 32;
+  if (N == 0 || N > MAX_STEPS) N = MAX_STEPS;
   uint16_t t0 = (config.t0 >= 20 && config.t0 <= 5000) ? config.t0 : 150;
   stair_state = STATE_RUN_UP;
   step_idx = 0;
   fade_step = 0;
-  current_led_mask |= ((uint32_t)1 << step_idx);
-  shift595_set_mask(current_led_mask);
+  shift595_clear_all();
+  shift595_set_pin(step_idx, true);
   last_step_time = millis();
   next_off_state = STATE_OFF_UP;
   Serial.printf_P(PSTR("[FSM] -> HỦY TẮT DẦN: Người mới đi lên -> Sáng dồn từ dưới lên (Bậc 1/%u, t0=%ums)\n"), N, t0);
@@ -279,13 +282,13 @@ void cancelFadeOffAndRunUp() {
 
 void cancelFadeOffAndRunDown() {
   uint8_t N = config.number_step;
-  if (N == 0 || N > MAX_STEPS) N = 32;
+  if (N == 0 || N > MAX_STEPS) N = MAX_STEPS;
   uint16_t t0 = (config.t0 >= 20 && config.t0 <= 5000) ? config.t0 : 150;
   stair_state = STATE_RUN_DOWN;
   step_idx = N - 1;
   fade_step = 0;
-  current_led_mask |= ((uint32_t)1 << step_idx);
-  shift595_set_mask(current_led_mask);
+  shift595_clear_all();
+  shift595_set_pin(step_idx, true);
   last_step_time = millis();
   next_off_state = STATE_OFF_DOWN;
   Serial.printf_P(PSTR("[FSM] -> HỦY TẮT DẦN: Người mới đi xuống -> Sáng dồn từ trên xuống (Bậc %u/%u, t0=%ums)\n"), N, N, t0);
@@ -293,14 +296,15 @@ void cancelFadeOffAndRunDown() {
 
 void cancelFadeOffAndRunBoth() {
   uint8_t N = config.number_step;
-  if (N == 0 || N > MAX_STEPS) N = 32;
+  if (N == 0 || N > MAX_STEPS) N = MAX_STEPS;
   uint16_t t0 = (config.t0 >= 20 && config.t0 <= 5000) ? config.t0 : 150;
   stair_state = STATE_RUN_BOTH;
   step_idx = 0;
   step_idx2 = N - 1;
   fade_step = 0;
-  current_led_mask |= (((uint32_t)1 << step_idx) | ((uint32_t)1 << step_idx2));
-  shift595_set_mask(current_led_mask);
+  shift595_clear_all();
+  shift595_set_pin(step_idx, true, false);
+  shift595_set_pin(step_idx2, true, true);
   last_step_time = millis();
   next_off_state = STATE_OFF_BOTH;
   Serial.printf_P(PSTR("[FSM] -> HỦY TẮT DẦN: Cả 2 hướng cùng đi -> Sáng dồn từ 2 phía vào giữa (t0=%ums)\n"), t0);
@@ -309,7 +313,7 @@ void cancelFadeOffAndRunBoth() {
 void updateStairStateMachine() {
   unsigned long now = millis();
   uint8_t N = config.number_step;
-  if (N == 0 || N > MAX_STEPS) N = 32;
+  if (N == 0 || N > MAX_STEPS) N = MAX_STEPS;
 
   // Đảm bảo các mốc thời gian luôn có giá trị an toàn:
   // t0: Thời gian sáng từng bậc (ms)
@@ -337,8 +341,9 @@ void updateStairStateMachine() {
         step_idx = 0;
         step_idx2 = N - 1;
         fade_step = 0;
-        current_led_mask = ((uint32_t)1 << step_idx) | ((uint32_t)1 << step_idx2);
-        shift595_set_mask(current_led_mask);
+        shift595_clear_all();
+        shift595_set_pin(step_idx, true, false);
+        shift595_set_pin(step_idx2, true, true);
         last_step_time = now;
         next_off_state = STATE_OFF_BOTH;
       } else if (trig1) {
@@ -347,8 +352,8 @@ void updateStairStateMachine() {
         stair_state = STATE_RUN_UP;
         step_idx = 0;
         fade_step = 0;
-        current_led_mask = ((uint32_t)1 << step_idx);
-        shift595_set_mask(current_led_mask);
+        shift595_clear_all();
+        shift595_set_pin(step_idx, true);
         Serial.printf_P(PSTR("[FSM] -> Bậc 1/%u sáng (t0=%ums)\n"), N, t0);
         last_step_time = now;
         next_off_state = STATE_OFF_UP;
@@ -358,8 +363,8 @@ void updateStairStateMachine() {
         stair_state = STATE_RUN_DOWN;
         step_idx = N - 1;
         fade_step = 0;
-        current_led_mask = ((uint32_t)1 << step_idx);
-        shift595_set_mask(current_led_mask);
+        shift595_clear_all();
+        shift595_set_pin(step_idx, true);
         Serial.printf_P(PSTR("[FSM] -> Bậc %u/%u sáng (t0=%ums)\n"), N, N, t0);
         last_step_time = now;
         next_off_state = STATE_OFF_DOWN;
@@ -375,8 +380,7 @@ void updateStairStateMachine() {
         last_step_time = now;
         step_idx++;
         if (step_idx < N) {
-          current_led_mask |= ((uint32_t)1 << step_idx);
-          shift595_set_mask(current_led_mask);
+          shift595_set_pin(step_idx, true);
           Serial.printf_P(PSTR("[FSM] -> Bậc %u/%u sáng (t0=%ums)\n"), step_idx + 1, N, t0);
         } else {
           // Đã sáng đủ N bậc đi lên -> Chuyển sang GIỮ SÁNG t2 (HOLD)
@@ -398,8 +402,7 @@ void updateStairStateMachine() {
         last_step_time = now;
         step_idx--;
         if (step_idx >= 0) {
-          current_led_mask |= ((uint32_t)1 << step_idx);
-          shift595_set_mask(current_led_mask);
+          shift595_set_pin(step_idx, true);
           Serial.printf_P(PSTR("[FSM] -> Bậc %u/%u sáng (t0=%ums)\n"), step_idx + 1, N, t0);
         } else {
           // Đã sáng đủ N bậc đi xuống -> Chuyển sang GIỮ SÁNG t2 (HOLD)
@@ -422,9 +425,9 @@ void updateStairStateMachine() {
         step_idx++;
         step_idx2--;
 
-        if (step_idx < N) current_led_mask |= ((uint32_t)1 << step_idx);
-        if (step_idx2 >= 0) current_led_mask |= ((uint32_t)1 << step_idx2);
-        shift595_set_mask(current_led_mask);
+        if (step_idx < N) shift595_set_pin(step_idx, true, false);
+        if (step_idx2 >= 0) shift595_set_pin(step_idx2, true, false);
+        shift595_update();
 
         // Hai luồng sáng gặp nhau ở trung tâm cầu thang
         if (step_idx >= step_idx2) {
@@ -460,9 +463,7 @@ void updateStairStateMachine() {
         fade_step = 0; // Khởi tạo bước tắt dồn từ 0
 
         // Đảm bảo toàn bộ LED đang sáng đủ trước khi bắt đầu chu trình tắt dồn
-        uint32_t full_mask = (N >= 32) ? 0xFFFFFFFF : (((uint32_t)1 << N) - 1);
-        current_led_mask = full_mask;
-        shift595_set_mask(current_led_mask);
+        shift595_set_all(true);
 
         if (stair_state == STATE_OFF_UP) {
           Serial.println(F("[FSM] -> Hết t2: Bắt đầu TẮT LẦN LƯỢT TỪ DƯỚI LÊN (1 -> N, mỗi bậc tắt sau thời gian t1)"));
@@ -495,9 +496,8 @@ void updateStairStateMachine() {
         fade_step++;
 
         if (fade_step <= N) {
-          // Tắt trực tiếp bit của bậc tương ứng từ dưới lên (bậc 1 tương ứng bit 0)
-          current_led_mask &= ~((uint32_t)1 << (fade_step - 1));
-          shift595_set_mask(current_led_mask);
+          // Tắt trực tiếp bit của bậc tương ứng từ dưới lên (bậc 1 tương ứng index 0)
+          shift595_set_pin(fade_step - 1, false);
 
           if (fade_step < N) {
             Serial.printf_P(PSTR("[FSM] -> Bậc %u/%u TẮT (sau thời gian t1=%ums, còn %u bậc đang sáng)\n"), fade_step, N, t1, N - fade_step);
@@ -533,9 +533,8 @@ void updateStairStateMachine() {
         fade_step++;
 
         if (fade_step <= N) {
-          // Tắt trực tiếp bit của bậc tương ứng từ trên xuống (bậc N tương ứng bit N-1)
-          current_led_mask &= ~((uint32_t)1 << (N - fade_step));
-          shift595_set_mask(current_led_mask);
+          // Tắt trực tiếp bit của bậc tương ứng từ trên xuống (bậc N tương ứng index N-1)
+          shift595_set_pin(N - fade_step, false);
 
           if (fade_step < N) {
             Serial.printf_P(PSTR("[FSM] -> Bậc %u/%u TẮT (sau thời gian t1=%ums, còn %u bậc đang sáng)\n"), N - fade_step + 1, N, t1, N - fade_step);
@@ -570,13 +569,13 @@ void updateStairStateMachine() {
         last_step_time = now;
         fade_step++;
 
-        int8_t left_bit = fade_step - 1;
-        int8_t right_bit = N - fade_step;
+        int16_t left_bit = fade_step - 1;
+        int16_t right_bit = N - fade_step;
 
         if (left_bit <= right_bit) {
-          current_led_mask &= ~((uint32_t)1 << left_bit);
-          current_led_mask &= ~((uint32_t)1 << right_bit);
-          shift595_set_mask(current_led_mask);
+          shift595_set_pin(left_bit, false, false);
+          shift595_set_pin(right_bit, false, false);
+          shift595_update();
 
           if (left_bit < right_bit) {
             Serial.printf_P(PSTR("[FSM] -> Bậc %u và bậc %u TẮT (sau thời gian t1=%ums, còn %u bậc đang sáng)\n"), left_bit + 1, right_bit + 1, t1, right_bit - left_bit - 1);
@@ -610,13 +609,12 @@ void runDemoEffects() {
     demo_step = 0;
     demo_last_time = now;
     demo_flag = false;
+    shift595_clear_all();
   }
 
   uint16_t t0 = (config.t0 >= 20 && config.t0 <= 5000) ? config.t0 : 150;
   uint16_t t1 = (config.t1 >= 20 && config.t1 <= 5000) ? config.t1 : 150;
   uint16_t t2 = (config.t2 >= 500 && config.t2 <= 60000) ? config.t2 : 5000;
-
-  uint32_t total_mask = (N >= 32) ? 0xFFFFFFFF : (((uint32_t)1 << N) - 1);
 
   switch (config.mode) {
     case MODE_ALL_ON:
@@ -635,8 +633,7 @@ void runDemoEffects() {
           demo_last_time = now;
           demo_step++;
           if (demo_step <= N) {
-            uint32_t m = (demo_step >= 32) ? 0xFFFFFFFF : (((uint32_t)1 << demo_step) - 1);
-            shift595_set_mask(m);
+            shift595_set_pin(demo_step - 1, true);
           }
           if (demo_step >= N) {
             shift595_set_all(true);
@@ -657,11 +654,7 @@ void runDemoEffects() {
           demo_last_time = now;
           demo_step++;
           if (demo_step <= N) {
-            uint32_t m = 0;
-            for (int i = demo_step; i < N; i++) {
-              m |= ((uint32_t)1 << i);
-            }
-            shift595_set_mask(m);
+            shift595_set_pin(demo_step - 1, false);
           }
           if (demo_step >= N) {
             shift595_set_all(false);
@@ -675,6 +668,7 @@ void runDemoEffects() {
           demo_phase = 0;
           demo_step = 0;
           demo_last_time = now;
+          shift595_clear_all();
         }
       }
       break;
@@ -688,11 +682,7 @@ void runDemoEffects() {
           demo_last_time = now;
           demo_step++;
           if (demo_step <= N) {
-            uint32_t m = 0;
-            for (int i = 0; i < demo_step; i++) {
-              m |= ((uint32_t)1 << (N - 1 - i));
-            }
-            shift595_set_mask(m);
+            shift595_set_pin(N - demo_step, true);
           }
           if (demo_step >= N) {
             shift595_set_all(true);
@@ -713,11 +703,7 @@ void runDemoEffects() {
           demo_last_time = now;
           demo_step++;
           if (demo_step <= N) {
-            uint32_t m = 0;
-            for (int i = 0; i < N - demo_step; i++) {
-              m |= ((uint32_t)1 << i);
-            }
-            shift595_set_mask(m);
+            shift595_set_pin(N - demo_step, false);
           }
           if (demo_step >= N) {
             shift595_set_all(false);
@@ -731,6 +717,7 @@ void runDemoEffects() {
           demo_phase = 0;
           demo_step = 0;
           demo_last_time = now;
+          shift595_clear_all();
         }
       }
       break;
@@ -752,14 +739,14 @@ void runDemoEffects() {
           demo_step++;
 
           if (demo_step < N + tail_len) {
-            uint32_t m = 0;
+            memset(led_buffer, 0, sizeof(led_buffer));
             for (uint8_t k = 0; k < tail_len; k++) {
               int pos = demo_step - k;
               if (pos >= 0 && pos < N) {
-                m |= ((uint32_t)1 << pos);
+                led_buffer[pos / 8] |= (1 << (pos % 8));
               }
             }
-            shift595_set_mask(m);
+            shift595_update();
           } else {
             // Sao băng đã bay hết cầu thang -> Tắt toàn bộ và chuyển sang giai đoạn nghỉ ngắn
             shift595_set_all(false);
@@ -789,18 +776,240 @@ void runDemoEffects() {
     }
 
     case MODE_SO_LE: {
-      // Hiệu ứng sáng, tắt so le chẵn - lẻ
-      // Bậc chẵn (1, 3, 5... tương ứng bit 0, 2, 4...) -> Mask 0x55555555
-      // Bậc lẻ (2, 4, 6... tương ứng bit 1, 3, 5...) -> Mask 0xAAAAAAAA
+      // Hiệu ứng sáng, tắt so le chẵn - lẻ (chạy chuẩn trên mọi số bậc N)
       if (now - demo_last_time >= (t0 < 100 ? 250 : t0 * 2)) {
         demo_last_time = now;
         demo_flag = !demo_flag;
-        if (demo_flag) {
-          // Bật các bậc lẻ (bit 0, 2, 4...), tắt các bậc chẵn
-          shift595_set_mask(0x55555555 & total_mask);
-        } else {
-          // Bật các bậc chẵn (bit 1, 3, 5...), tắt các bậc lẻ
-          shift595_set_mask(0xAAAAAAAA & total_mask);
+        memset(led_buffer, 0, sizeof(led_buffer));
+        for (uint8_t i = 0; i < N; i++) {
+          bool on = demo_flag ? (i % 2 == 0) : (i % 2 != 0);
+          if (on) {
+            led_buffer[i / 8] |= (1 << (i % 8));
+          }
+        }
+        shift595_update();
+      }
+      break;
+    }
+
+    case MODE_AUTO_DEMO: {
+      // Chế độ 9: Chạy toàn bộ các chế độ (không dùng cảm biến)
+      // Thứ tự tuần hoàn:
+      //   1. Sáng dồn từ dưới lên -> Giữ sáng -> Tắt dồn
+      //   2. Sáng dồn từ trên xuống -> Giữ sáng -> Tắt dồn
+      //   3. Sao băng / rượt đuổi (3 đợt lướt qua)
+      //   4. Sáng tắt so le chẵn - lẻ (8 nhịp đảo chiều)
+      //   5. Chớp nháy đồng bộ (6 nhịp nhấp nháy)
+      //   6. Sáng toàn bộ 2.5 giây -> Quay vòng lại bước 1
+      static uint8_t auto_sub = 0;
+      static uint8_t auto_cnt = 0;
+
+      static uint8_t last_check_mode = 0;
+      if (last_check_mode != config.mode) {
+        last_check_mode = config.mode;
+        auto_sub = 0;
+        auto_cnt = 0;
+        demo_phase = 0;
+        demo_step = 0;
+        demo_last_time = now;
+        demo_flag = false;
+        shift595_clear_all();
+      }
+
+      switch (auto_sub) {
+        // --- 1. Sáng dồn từ dưới lên (1 chu kỳ) ---
+        case 0: {
+          if (demo_phase == 0) {
+            if (now - demo_last_time >= t0) {
+              demo_last_time = now;
+              demo_step++;
+              if (demo_step <= N) shift595_set_pin(demo_step - 1, true);
+              if (demo_step >= N) {
+                shift595_set_all(true);
+                demo_phase = 1;
+                demo_last_time = now;
+              }
+            }
+          } else if (demo_phase == 1) {
+            uint16_t hold_time = (t2 > 2500) ? 2500 : t2;
+            if (now - demo_last_time >= hold_time) {
+              demo_phase = 2;
+              demo_step = 0;
+              demo_last_time = now;
+            }
+          } else if (demo_phase == 2) {
+            if (now - demo_last_time >= t1) {
+              demo_last_time = now;
+              demo_step++;
+              if (demo_step <= N) shift595_set_pin(demo_step - 1, false);
+              if (demo_step >= N) {
+                shift595_set_all(false);
+                demo_phase = 3;
+                demo_last_time = now;
+              }
+            }
+          } else if (demo_phase == 3) {
+            if (now - demo_last_time >= 400) {
+              auto_sub = 1;
+              demo_phase = 0;
+              demo_step = 0;
+              demo_last_time = now;
+              shift595_clear_all();
+            }
+          }
+          break;
+        }
+
+        // --- 2. Sáng dồn từ trên xuống (1 chu kỳ) ---
+        case 1: {
+          if (demo_phase == 0) {
+            if (now - demo_last_time >= t0) {
+              demo_last_time = now;
+              demo_step++;
+              if (demo_step <= N) shift595_set_pin(N - demo_step, true);
+              if (demo_step >= N) {
+                shift595_set_all(true);
+                demo_phase = 1;
+                demo_last_time = now;
+              }
+            }
+          } else if (demo_phase == 1) {
+            uint16_t hold_time = (t2 > 2500) ? 2500 : t2;
+            if (now - demo_last_time >= hold_time) {
+              demo_phase = 2;
+              demo_step = 0;
+              demo_last_time = now;
+            }
+          } else if (demo_phase == 2) {
+            if (now - demo_last_time >= t1) {
+              demo_last_time = now;
+              demo_step++;
+              if (demo_step <= N) shift595_set_pin(N - demo_step, false);
+              if (demo_step >= N) {
+                shift595_set_all(false);
+                demo_phase = 3;
+                demo_last_time = now;
+              }
+            }
+          } else if (demo_phase == 3) {
+            if (now - demo_last_time >= 400) {
+              auto_sub = 2;
+              auto_cnt = 0;
+              demo_phase = 0;
+              demo_step = 0;
+              demo_last_time = now;
+              shift595_clear_all();
+            }
+          }
+          break;
+        }
+
+        // --- 3. Sao băng / rượt đuổi (3 đợt lướt qua) ---
+        case 2: {
+          const uint16_t METEOR_SPEED = 45;
+          const uint16_t METEOR_PAUSE = 400;
+          uint8_t tail_len = (N >= 20) ? 5 : 4;
+
+          if (demo_phase == 0) {
+            if (now - demo_last_time >= METEOR_SPEED) {
+              demo_last_time = now;
+              demo_step++;
+
+              if (demo_step < N + tail_len) {
+                memset(led_buffer, 0, sizeof(led_buffer));
+                for (uint8_t k = 0; k < tail_len; k++) {
+                  int pos = demo_step - k;
+                  if (pos >= 0 && pos < N) {
+                    led_buffer[pos / 8] |= (1 << (pos % 8));
+                  }
+                }
+                shift595_update();
+              } else {
+                shift595_set_all(false);
+                demo_phase = 1;
+                demo_last_time = now;
+                auto_cnt++;
+              }
+            }
+          } else {
+            if (now - demo_last_time >= METEOR_PAUSE) {
+              if (auto_cnt >= 3) {
+                auto_sub = 3;
+                auto_cnt = 0;
+                demo_phase = 0;
+                demo_step = 0;
+                demo_last_time = now;
+                demo_flag = false;
+                shift595_clear_all();
+              } else {
+                demo_phase = 0;
+                demo_step = 0;
+                demo_last_time = now;
+              }
+            }
+          }
+          break;
+        }
+
+        // --- 4. Sáng tắt so le chẵn - lẻ (8 nhịp đổi bên) ---
+        case 3: {
+          uint16_t rate = (t0 < 100) ? 250 : (t0 > 400 ? 400 : t0 * 2);
+          if (now - demo_last_time >= rate) {
+            demo_last_time = now;
+            demo_flag = !demo_flag;
+            memset(led_buffer, 0, sizeof(led_buffer));
+            for (uint8_t i = 0; i < N; i++) {
+              bool on = demo_flag ? (i % 2 == 0) : (i % 2 != 0);
+              if (on) {
+                led_buffer[i / 8] |= (1 << (i % 8));
+              }
+            }
+            shift595_update();
+            auto_cnt++;
+
+            if (auto_cnt >= 8) {
+              auto_sub = 4;
+              auto_cnt = 0;
+              demo_phase = 0;
+              demo_step = 0;
+              demo_last_time = now;
+              demo_flag = false;
+              shift595_clear_all();
+            }
+          }
+          break;
+        }
+
+        // --- 5. Chớp nháy đồng bộ (6 nhịp) ---
+        case 4: {
+          if (now - demo_last_time >= 350) {
+            demo_last_time = now;
+            demo_flag = !demo_flag;
+            shift595_set_all(demo_flag);
+            auto_cnt++;
+
+            if (auto_cnt >= 6) {
+              auto_sub = 5;
+              auto_cnt = 0;
+              demo_last_time = now;
+              shift595_set_all(true);
+            }
+          }
+          break;
+        }
+
+        // --- 6. Sáng toàn bộ 2.5 giây rồi quay vòng lại từ đầu ---
+        case 5: {
+          if (now - demo_last_time >= 2500) {
+            auto_sub = 0;
+            auto_cnt = 0;
+            demo_phase = 0;
+            demo_step = 0;
+            demo_last_time = now;
+            demo_flag = false;
+            shift595_clear_all();
+          }
+          break;
         }
       }
       break;
@@ -889,7 +1098,7 @@ void handleApiPostConfig() {
     const char* body = server.arg("plain").c_str();
 
     int mode = getJsonInt(body, "mode", -1);
-    if (mode >= 1 && mode <= 8) config.mode = mode;
+    if (mode >= 1 && mode <= 9) config.mode = mode;
 
     int steps = getJsonInt(body, "number_step", -1);
     if (steps >= 1 && steps <= MAX_STEPS) config.number_step = steps;
@@ -924,7 +1133,10 @@ void handleApiPostConfig() {
   }
 
   // Fallback URL-encoded
-  if (server.hasArg("mode")) config.mode = server.arg("mode").toInt();
+  if (server.hasArg("mode")) {
+    int m = server.arg("mode").toInt();
+    if (m >= 1 && m <= 9) config.mode = m;
+  }
   if (server.hasArg("number_step")) {
     int s = server.arg("number_step").toInt();
     if (s >= 1 && s <= MAX_STEPS) config.number_step = s;
