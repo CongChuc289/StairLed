@@ -25,15 +25,16 @@
 
 // Các chế độ hoạt động chính
 enum RunMode {
-  MODE_SMART_SENSOR = 1, // Chế độ cảm biến thông minh tự động (Mặc định: Kịch bản 1 -> 6)
-  MODE_ALL_ON,           // Luôn sáng toàn bộ số bậc (Chế độ kiểm tra LED)
-  MODE_SANG_DON_LEN,     // Demo: Sáng dồn lên -> giữ sáng t2 -> tắt dồn lên t1
-  MODE_SANG_DON_XUONG,   // Demo: Sáng dồn xuống -> giữ sáng t2 -> tắt dồn xuống t1
-  MODE_SAO_BANG,         // Demo: Hiệu ứng sao băng / rượt đuổi
-  MODE_NHAP_NHAY,        // Demo: Hiệu ứng chớp nháy đồng bộ (Blink)
-  MODE_SO_LE,            // Demo: Hiệu ứng sáng tắt so le chẵn lẻ
-  MODE_ALL_OFF,          // Tắt toàn bộ
-  MODE_AUTO_DEMO         // Chế độ 9: Chạy toàn bộ các chế độ
+  MODE_SMART_SENSOR = 1, // 1. Chế độ cảm biến thông minh tự động (Mặc định: Kịch bản 1 -> 6)
+  MODE_ALL_ON,           // 2. Luôn sáng toàn bộ số bậc (Chế độ kiểm tra LED)
+  MODE_XEP_HINH_LEN,     // 3. Demo: Xếp hình từ dưới lên (Bắn lên đỉnh đọng lại)
+  MODE_XEP_HINH_XUONG,   // 4. Demo: Xếp hình từ trên xuống (Rơi xuống đáy đọng lại)
+  MODE_SAO_BANG_LEN,     // 5. Demo: Sao băng từ dưới lên (chỉnh được số LED)
+  MODE_SAO_BANG_XUONG,   // 6. Demo: Sao băng từ trên xuống (chỉnh được số LED)
+  MODE_NHAP_NHAY,        // 7. Demo: Hiệu ứng chớp nháy đồng bộ (Blink)
+  MODE_SO_LE,            // 8. Demo: Hiệu ứng sáng tắt so le chẵn lẻ
+  MODE_ALL_OFF,          // 9. Tắt toàn bộ
+  MODE_AUTO_DEMO         // 10. Chế độ 10: Chạy toàn bộ các chế độ
 };
 
 // Trạng thái máy hữu hạn FSM cho điều khiển LED cầu thang thông minh
@@ -56,6 +57,7 @@ struct ConfigData {
   uint16_t t1;                 // Thời gian tắt từng bậc t1 (ms)
   uint16_t t2;                 // Thời gian sáng sau khi rời cầu thang t2 (ms)
   uint8_t  mode;               // Chế độ hoạt động (RunMode)
+  uint8_t  meteor_leds;        // Số LED sao băng (vệt sáng, 1 đến 15 LED)
 };
 
 extern ConfigData config;

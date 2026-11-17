@@ -131,6 +131,7 @@ void eeprom_reset_defaults(void) {
   config.t1 = 150;               // t1: Thời gian tắt từng bậc (ms)
   config.t2 = 5000;              // t2: Thời gian sáng sau khi rời cầu thang (ms)
   config.mode = MODE_SMART_SENSOR; // Chế độ cảm biến thông minh
+  config.meteor_leds = 5;        // Mặc định 5 LED sao băng
 
   EEPROM.put(0, config);
   EEPROM.commit();
@@ -162,8 +163,12 @@ void eeprom_init_and_load(void) {
       config.t2 = 5000;
       need_re_save = true;
     }
-    if (config.mode < 1 || config.mode > 9) {
+    if (config.mode < 1 || config.mode > 10) {
       config.mode = MODE_SMART_SENSOR;
+      need_re_save = true;
+    }
+    if (config.meteor_leds < 1 || config.meteor_leds > 15) {
+      config.meteor_leds = 5;
       need_re_save = true;
     }
     if (need_re_save) {
@@ -175,6 +180,7 @@ void eeprom_init_and_load(void) {
     Serial.printf_P(PSTR(" - Thời gian tắt từng bậc (t1): %u ms\n"), config.t1);
     Serial.printf_P(PSTR(" - Thời gian giữ sáng sau khi rời cầu thang (t2): %u ms\n"), config.t2);
     Serial.printf_P(PSTR(" - Chế độ (Mode): %u\n"), config.mode);
+    Serial.printf_P(PSTR(" - Số LED sao băng: %u\n"), config.meteor_leds);
   }
 }
 

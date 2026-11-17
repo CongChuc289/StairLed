@@ -260,54 +260,70 @@ const char webpage[] PROGMEM = R"rawliteral(
         <!-- Chế độ hoạt động -->
         <div class="form-group">
           <label class="form-label">Chế độ hoạt động</label>
-          <select id="mode" name="mode">
+          <select id="mode" name="mode" onchange="updateVisibleFields()">
             <option value="1">1. Cảm biến thông minh</option>
-            <option value="2">2. Kiểm tra LED (Sáng tất cả các bậc)</option>
-            <option value="3">3. Sáng dồn từ dưới lên</option>
-            <option value="4">4. Sáng dồn từ trên xuống</option>
-            <option value="5">5. Sao Băng / Rượt đuổi</option>
-            <option value="6">6. Chớp nháy đồng bộ</option>
-            <option value="7">7. Sáng, tắt so le chẵn lẻ</option>
-            <option value="8">8. Tắt toàn bộ LED</option>
-            <option value="9">9. Chạy toàn bộ các chế độ</option>
+            <option value="2">2. Bật toàn bộ LED</option>
+            <option value="3">3. Xếp hình từ dưới lên</option>
+            <option value="4">4. Xếp hình từ trên xuống</option>
+            <option value="5">5. Sao Băng từ dưới lên</option>
+            <option value="6">6. Sao Băng từ trên xuống</option>
+            <option value="7">7. Chớp nháy đồng bộ</option>
+            <option value="8">8. Sáng, tắt so le chẵn lẻ</option>
+            <option value="9">9. Tắt toàn bộ LED</option>
+            <option value="10">10. Chạy toàn bộ các chế độ</option>
           </select>
         </div>
 
-        <!-- Số bậc cầu thang -->
-        <div class="form-group">
-          <div class="form-label">
-            <span>Số bậc cầu thang (tối đa 27 bậc):</span>
-            <span class="form-val" id="val-number_step">25</span>
+        <!-- Khối tham số cài đặt (Tự động ẩn ở Mode 2 và Mode 9) -->
+        <div id="settings-group">
+          <!-- Số bậc cầu thang -->
+          <div class="form-group" id="group-number_step">
+            <div class="form-label">
+              <span>Số bậc cầu thang (tối đa 27 bậc):</span>
+              <span class="form-val" id="val-number_step">25</span>
+            </div>
+            <input type="range" id="number_step" name="number_step" min="1" max="27" value="25" oninput="updateRangeVal('number_step', '')">
           </div>
-          <input type="range" id="number_step" name="number_step" min="1" max="27" value="25" oninput="updateRangeVal('number_step', '')">
+
+          <!-- Số LED sao băng (Chỉ hiển thị khi chọn Mode 5 hoặc Mode 6) -->
+          <div class="form-group" id="group-meteor_leds" style="display: none;">
+            <div class="form-label">
+              <span>Số LED vệt sao băng:</span>
+              <span class="form-val" id="val-meteor_leds">5 LED</span>
+            </div>
+            <input type="range" id="meteor_leds" name="meteor_leds" min="1" max="15" value="5" oninput="updateRangeVal('meteor_leds', ' LED')">
+          </div>
+
+          <!-- Thời gian sáng từng bậc t0 -->
+          <div class="form-group" id="group-t0">
+            <div class="form-label">
+              <span>Thời gian sáng từng bậc (t0):</span>
+              <span class="form-val" id="val-t0">150 ms</span>
+            </div>
+            <input type="range" id="t0" name="t0" min="20" max="1000" step="10" value="150" oninput="updateRangeVal('t0', ' ms')">
+          </div>
+
+          <!-- Thời gian tắt từng bậc t1 -->
+          <div class="form-group" id="group-t1">
+            <div class="form-label">
+              <span>Thời gian tắt từng bậc (t1):</span>
+              <span class="form-val" id="val-t1">150 ms</span>
+            </div>
+            <input type="range" id="t1" name="t1" min="20" max="1000" step="10" value="150" oninput="updateRangeVal('t1', ' ms')">
+          </div>
+
+          <!-- Thời gian sáng sau khi rời cầu thang t2 -->
+          <div class="form-group" id="group-t2">
+            <div class="form-label">
+              <span>Thời gian sáng sau khi rời cầu thang (t2):</span>
+              <span class="form-val" id="val-t2">5.0 s</span>
+            </div>
+            <input type="range" id="t2" name="t2" min="500" max="30000" step="500" value="5000" oninput="updateHoldVal()">
+          </div>
         </div>
 
-        <!-- Thời gian sáng từng bậc t0 -->
-        <div class="form-group">
-          <div class="form-label">
-            <span>Thời gian sáng từng bậc (t0):</span>
-            <span class="form-val" id="val-t0">150 ms</span>
-          </div>
-          <input type="range" id="t0" name="t0" min="20" max="1000" step="10" value="150" oninput="updateRangeVal('t0', ' ms')">
-        </div>
-
-        <!-- Thời gian tắt từng bậc t1 -->
-        <div class="form-group">
-          <div class="form-label">
-            <span>Thời gian tắt từng bậc (t1):</span>
-            <span class="form-val" id="val-t1">150 ms</span>
-          </div>
-          <input type="range" id="t1" name="t1" min="20" max="1000" step="10" value="150" oninput="updateRangeVal('t1', ' ms')">
-        </div>
-
-        <!-- Thời gian sáng sau khi rời cầu thang t2 -->
-        <div class="form-group">
-          <div class="form-label">
-            <span>Thời gian sáng sau khi rời cầu thang (t2):</span>
-            <span class="form-val" id="val-t2">5.0 s</span>
-          </div>
-          <input type="range" id="t2" name="t2" min="500" max="30000" step="500" value="5000" oninput="updateHoldVal()">
-        </div>
+        <!-- Khung thông báo ghi chú cho Mode 2 & Mode 9 -->
+        <div id="mode-notice" style="display: none; padding: 12px 14px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; margin-bottom: 16px; font-size: 13px; color: #93c5fd; line-height: 1.5; text-align: center;"></div>
 
         <!-- Nút gộp: Lưu cấu hình & Khởi động lại -->
         <div style="margin-top: 22px;">
@@ -353,6 +369,34 @@ const char webpage[] PROGMEM = R"rawliteral(
       document.getElementById('val-t2').innerText = (ms / 1000).toFixed(1) + ' s';
     }
 
+    // Cập nhật ẩn/hiển thị các tham số cài đặt theo Chế độ hoạt động
+    function updateVisibleFields() {
+      const mode = parseInt(document.getElementById('mode').value);
+      const settingsGroup = document.getElementById('settings-group');
+      const meteorGroup = document.getElementById('group-meteor_leds');
+      const notice = document.getElementById('mode-notice');
+
+      if (mode === 2) {
+        settingsGroup.style.display = 'none';
+        notice.style.display = 'block';
+        notice.innerHTML = '💡 <strong>Chế độ Kiểm tra LED:</strong> Toàn bộ các bậc LED sẽ luôn sáng để kiểm tra đèn và mạch (không cần tham số cài đặt).';
+      } else if (mode === 9) {
+        settingsGroup.style.display = 'none';
+        notice.style.display = 'block';
+        notice.innerHTML = '🌑 <strong>Chế độ Tắt toàn bộ LED:</strong> Toàn bộ các bậc LED sẽ luôn tắt (không cần tham số cài đặt).';
+      } else {
+        settingsGroup.style.display = 'block';
+        notice.style.display = 'none';
+
+        // Chỉ hiển thị Số LED vệt sao băng khi chọn mode 5 hoặc 6
+        if (mode === 5 || mode === 6) {
+          meteorGroup.style.display = 'block';
+        } else {
+          meteorGroup.style.display = 'none';
+        }
+      }
+    }
+
     // Lấy cấu hình từ ESP
     function loadConfig() {
       fetch('/api/config')
@@ -360,14 +404,17 @@ const char webpage[] PROGMEM = R"rawliteral(
         .then(cfg => {
           document.getElementById('mode').value = cfg.mode;
           document.getElementById('number_step').value = cfg.number_step;
+          document.getElementById('meteor_leds').value = cfg.meteor_leds || 5;
           document.getElementById('t0').value = cfg.t0 || cfg.t0_step_on || 150;
           document.getElementById('t1').value = cfg.t1 || cfg.t0_step_off || 150;
           document.getElementById('t2').value = cfg.t2 || cfg.t1_hold || 5000;
 
           updateRangeVal('number_step', '');
+          updateRangeVal('meteor_leds', ' LED');
           updateRangeVal('t0', ' ms');
           updateRangeVal('t1', ' ms');
           updateHoldVal();
+          updateVisibleFields();
         })
         .catch(err => console.error("Lỗi tải config:", err));
     }
@@ -402,6 +449,7 @@ const char webpage[] PROGMEM = R"rawliteral(
       const data = {
         mode: parseInt(document.getElementById('mode').value),
         number_step: parseInt(document.getElementById('number_step').value),
+        meteor_leds: parseInt(document.getElementById('meteor_leds').value),
         t0: parseInt(document.getElementById('t0').value),
         t1: parseInt(document.getElementById('t1').value),
         t2: parseInt(document.getElementById('t2').value),
@@ -416,7 +464,7 @@ const char webpage[] PROGMEM = R"rawliteral(
       .then(r => r.json())
       .then(res => {
         if (res.success) {
-          startRebootCountdown(6);
+          startRebootCountdown(5);
         } else {
           showToast("Lỗi khi lưu cấu hình!", true);
           saveBtn.disabled = false;
@@ -425,7 +473,7 @@ const char webpage[] PROGMEM = R"rawliteral(
       })
       .catch(err => {
         // Nếu ESP khởi động lại ngay làm ngắt kết nối fetch, vẫn kích hoạt đếm ngược
-        startRebootCountdown(6);
+        startRebootCountdown(5);
       });
     }
 

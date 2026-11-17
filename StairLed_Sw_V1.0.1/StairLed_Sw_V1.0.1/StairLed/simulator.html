@@ -546,60 +546,78 @@
                 <span>Chế độ chạy:</span>
               </div>
               <select id="sel-mode" onchange="onModeChange()">
-                <option value="1">1. Cảm biến thông minh (FSM Kịch bản 1 -> 6)</option>
-                <option value="2">2. Kiểm tra LED (Sáng tất cả)</option>
-                <option value="3">3. Demo sáng dồn lên -> giữ t2 -> tắt dồn lên t1</option>
-                <option value="4">4. Demo sáng dồn xuống -> giữ t2 -> tắt dồn xuống t1</option>
-                <option value="5">5. Demo Sao Băng / Rượt đuổi</option>
-                <option value="6">6. Demo Chớp nháy đồng bộ</option>
-                <option value="7">7. Demo Sáng tắt so le chẵn lẻ</option>
-                <option value="8">8. Tắt toàn bộ</option>
-                <option value="9">9. Chạy toàn bộ các chế độ</option>
+                <option value="1">1. Cảm biến thông minh (FSM Tự Động)</option>
+                <option value="2">2. Kiểm tra LED (Sáng tất cả các bậc)</option>
+                <option value="3">3. Demo Xếp hình từ dưới lên (Bắn lên đỉnh đọng lại)</option>
+                <option value="4">4. Demo Xếp hình từ trên xuống (Rơi xuống đáy đọng lại)</option>
+                <option value="5">5. Demo Sao Băng từ dưới lên</option>
+                <option value="6">6. Demo Sao Băng từ trên xuống</option>
+                <option value="7">7. Demo Chớp nháy đồng bộ</option>
+                <option value="8">8. Demo Sáng tắt so le chẵn lẻ</option>
+                <option value="9">9. Tắt toàn bộ LED</option>
+                <option value="10">10. Chạy toàn bộ các chế độ (Auto Demo)</option>
               </select>
             </div>
 
-            <!-- Số bậc N -->
-            <div class="form-group">
-              <div class="form-label">
-                <span>Số bậc cầu thang (N):</span>
-                <span class="form-val" id="val-n">25</span>
+            <!-- Khung tham số cài đặt (Tự động ẩn ở Mode 2 và Mode 9) -->
+            <div id="sim-settings-group" style="grid-column: 1 / -1; display: contents;">
+              <!-- Số bậc N -->
+              <div class="form-group">
+                <div class="form-label">
+                  <span>Số bậc cầu thang (N):</span>
+                  <span class="form-val" id="val-n">25</span>
+                </div>
+                <input type="range" id="input-n" min="1" max="27" value="25" oninput="onConfigChange()">
               </div>
-              <input type="range" id="input-n" min="1" max="27" value="25" oninput="onConfigChange()">
+
+              <!-- Số LED sao băng (Chỉ hiển thị khi chọn Mode 5 hoặc 6) -->
+              <div class="form-group" id="group-sim-meteor" style="display: none;">
+                <div class="form-label">
+                  <span>Số LED vệt sao băng:</span>
+                  <span class="form-val" id="val-meteor">5 LED</span>
+                </div>
+                <input type="range" id="input-meteor" min="1" max="15" value="5" oninput="onConfigChange()">
+              </div>
+
+              <!-- Thời gian sáng từng bậc t0 -->
+              <div class="form-group">
+                <div class="form-label">
+                  <span>Thời gian sáng từng bậc (t0):</span>
+                  <span class="form-val" id="val-t0">150 ms</span>
+                </div>
+                <input type="range" id="input-t0" min="20" max="1500" step="10" value="150" oninput="onConfigChange()">
+              </div>
+
+              <!-- Thời gian tắt từng bậc t1 -->
+              <div class="form-group">
+                <div class="form-label">
+                  <span>Thời gian tắt từng bậc (t1):</span>
+                  <span class="form-val" id="val-t1">540 ms</span>
+                </div>
+                <input type="range" id="input-t1" min="20" max="1500" step="10" value="540" oninput="onConfigChange()">
+              </div>
+
+              <!-- Thời gian giữ sáng t2 -->
+              <div class="form-group">
+                <div class="form-label">
+                  <span>Thời gian giữ sáng sau rời (t2):</span>
+                  <span class="form-val" id="val-t2">5000 ms</span>
+                </div>
+                <input type="range" id="input-t2" min="500" max="20000" step="500" value="5000" oninput="onConfigChange()">
+              </div>
             </div>
 
-            <!-- Thời gian sáng từng bậc t0 -->
-            <div class="form-group">
-              <div class="form-label">
-                <span>Thời gian sáng từng bậc (t0):</span>
-                <span class="form-val" id="val-t0">150 ms</span>
-              </div>
-              <input type="range" id="input-t0" min="30" max="1500" step="10" value="150" oninput="onConfigChange()">
-            </div>
-
-            <!-- Thời gian tắt từng bậc t1 -->
-            <div class="form-group">
-              <div class="form-label">
-                <span>Thời gian tắt từng bậc (t1):</span>
-                <span class="form-val" id="val-t1">540 ms</span>
-              </div>
-              <input type="range" id="input-t1" min="30" max="1500" step="10" value="540" oninput="onConfigChange()">
-            </div>
-
-            <!-- Thời gian giữ sáng t2 -->
-            <div class="form-group">
-              <div class="form-label">
-                <span>Thời gian giữ sáng sau rời (t2):</span>
-                <span class="form-val" id="val-t2">5000 ms</span>
-              </div>
-              <input type="range" id="input-t2" min="500" max="20000" step="500" value="5000" oninput="onConfigChange()">
-            </div>
+            <!-- Ghi chú cho Mode 2 và Mode 9 -->
+            <div id="sim-mode-notice" style="grid-column: 1 / -1; display: none; padding: 12px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; font-size: 13px; color: #93c5fd; line-height: 1.5; text-align: center;"></div>
           </div>
 
-          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">Cấu hình mẫu nhanh:</div>
-          <div class="presets-row">
-            <span class="preset-pill" onclick="applyPreset(150, 150, 5000, 25)">⚡ Mặc định (t0=150ms, t1=150ms, t2=5s, 25 bậc)</span>
-            <span class="preset-pill" onclick="applyPreset(150, 540, 5000, 25)">🎯 Cấu hình thực tế bạn đang test (t0=150ms, t1=540ms, t2=5s)</span>
-            <span class="preset-pill" onclick="applyPreset(400, 600, 4000, 25)">🔍 Chậm để quan sát rõ từng bậc (t0=400ms, t1=600ms, t2=4s)</span>
+          <div id="sim-presets-box">
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">Cấu hình mẫu nhanh:</div>
+            <div class="presets-row">
+              <span class="preset-pill" onclick="applyPreset(150, 150, 5000, 25)">⚡ Mặc định (t0=150ms, t1=150ms, t2=5s, 25 bậc)</span>
+              <span class="preset-pill" onclick="applyPreset(150, 540, 5000, 25)">🎯 Cấu hình thực tế bạn đang test (t0=150ms, t1=540ms, t2=5s)</span>
+              <span class="preset-pill" onclick="applyPreset(400, 600, 4000, 25)">🔍 Chậm để quan sát rõ từng bậc (t0=400ms, t1=600ms, t2=4s)</span>
+            </div>
           </div>
         </div>
 
@@ -647,6 +665,7 @@
       t0: 150,
       t1: 540,
       t2: 5000,
+      meteor_leds: 5,
       mode: 1
     };
 
@@ -1048,6 +1067,12 @@
         demo_step = 0;
         demo_last_time = now;
         demo_flag = false;
+        window.sim_stacked_count = 0;
+        window.sim_drop_idx = 0;
+        window.sim_xep_phase = 0;
+        window.sim_auto_sub = 0;
+        window.sim_auto_cnt = 0;
+        shift595_set_all(false);
       }
 
       switch (parseInt(config.mode)) {
@@ -1055,110 +1080,153 @@
           shift595_set_all(true);
           break;
 
-        case 3: { // SANG DON LEN
-          if (demo_phase === 0) {
-            if (now - demo_last_time >= t0) {
+        case 3: { // XẾP HÌNH TỪ DƯỚI LÊN
+          const xep_speed = (t0 >= 20 && t0 <= 5000) ? t0 : 40;
+          const unstack_speed = (t1 >= 20 && t1 <= 5000) ? t1 : 60;
+          const hold_full_time = (t2 >= 500 && t2 <= 60000) ? t2 : 2000;
+
+          if (typeof window.sim_stacked_count === 'undefined') {
+            window.sim_stacked_count = 0;
+            window.sim_drop_idx = 0;
+            window.sim_xep_phase = 0;
+          }
+
+          if (window.sim_xep_phase === 0) {
+            if (now - demo_last_time >= xep_speed) {
               demo_last_time = now;
-              demo_step++;
-              if (demo_step <= N) {
-                const m = (demo_step >= 32) ? 0xFFFFFFFF : (((1 << demo_step) - 1) >>> 0);
-                shift595_set_mask(m);
+              let m = 0;
+              for (let i = N - window.sim_stacked_count; i < N; i++) {
+                m = (m | (1 << i)) >>> 0;
               }
-              if (demo_step >= N) {
-                shift595_set_all(true);
-                demo_phase = 1;
-                demo_last_time = now;
+              if (window.sim_drop_idx < N - window.sim_stacked_count) {
+                m = (m | (1 << window.sim_drop_idx)) >>> 0;
+              }
+              shift595_set_mask(m);
+
+              if (window.sim_drop_idx >= N - window.sim_stacked_count - 1) {
+                window.sim_stacked_count++;
+                window.sim_drop_idx = 0;
+                if (window.sim_stacked_count >= N) {
+                  shift595_set_all(true);
+                  window.sim_xep_phase = 1;
+                  demo_last_time = now;
+                }
+              } else {
+                window.sim_drop_idx++;
               }
             }
-          } else if (demo_phase === 1) {
-            if (now - demo_last_time >= t2) {
-              demo_phase = 2;
-              demo_step = 0;
+          } else if (window.sim_xep_phase === 1) {
+            if (now - demo_last_time >= hold_full_time) {
+              window.sim_xep_phase = 2;
+              window.sim_drop_idx = 0;
               demo_last_time = now;
             }
-          } else if (demo_phase === 2) {
-            if (now - demo_last_time >= t1) {
+          } else if (window.sim_xep_phase === 2) {
+            if (now - demo_last_time >= unstack_speed) {
               demo_last_time = now;
-              demo_step++;
-              if (demo_step <= N) {
+              window.sim_drop_idx++;
+              if (window.sim_drop_idx <= N) {
                 let m = 0;
-                for (let i = demo_step; i < N; i++) m = (m | (1 << i)) >>> 0;
+                for (let i = window.sim_drop_idx; i < N; i++) {
+                  m = (m | (1 << i)) >>> 0;
+                }
                 shift595_set_mask(m);
               }
-              if (demo_step >= N) {
+              if (window.sim_drop_idx >= N) {
                 shift595_set_all(false);
-                demo_phase = 3;
+                window.sim_xep_phase = 3;
                 demo_last_time = now;
               }
             }
-          } else if (demo_phase === 3) {
-            if (now - demo_last_time >= 500) {
-              demo_phase = 0;
-              demo_step = 0;
+          } else if (window.sim_xep_phase === 3) {
+            if (now - demo_last_time >= 600) {
+              window.sim_stacked_count = 0;
+              window.sim_drop_idx = 0;
+              window.sim_xep_phase = 0;
               demo_last_time = now;
+              shift595_set_all(false);
             }
           }
           break;
         }
 
-        case 4: { // SANG DON XUONG
-          if (demo_phase === 0) {
-            if (now - demo_last_time >= t0) {
+        case 4: { // XẾP HÌNH TỪ TRÊN XUỐNG
+          const xep_speed = (t0 >= 20 && t0 <= 5000) ? t0 : 40;
+          const unstack_speed = (t1 >= 20 && t1 <= 5000) ? t1 : 60;
+          const hold_full_time = (t2 >= 500 && t2 <= 60000) ? t2 : 2000;
+
+          if (typeof window.sim_stacked_count === 'undefined') {
+            window.sim_stacked_count = 0;
+            window.sim_drop_idx = N - 1;
+            window.sim_xep_phase = 0;
+          }
+
+          if (window.sim_xep_phase === 0) {
+            if (now - demo_last_time >= xep_speed) {
               demo_last_time = now;
-              demo_step++;
-              if (demo_step <= N) {
-                let m = 0;
-                for (let i = 0; i < demo_step; i++) m = (m | (1 << (N - 1 - i))) >>> 0;
-                shift595_set_mask(m);
+              let m = 0;
+              for (let i = 0; i < window.sim_stacked_count && i < N; i++) {
+                m = (m | (1 << i)) >>> 0;
               }
-              if (demo_step >= N) {
-                shift595_set_all(true);
-                demo_phase = 1;
-                demo_last_time = now;
+              if (window.sim_drop_idx >= window.sim_stacked_count && window.sim_drop_idx < N) {
+                m = (m | (1 << window.sim_drop_idx)) >>> 0;
+              }
+              shift595_set_mask(m);
+
+              if (window.sim_drop_idx <= window.sim_stacked_count) {
+                window.sim_stacked_count++;
+                window.sim_drop_idx = N - 1;
+                if (window.sim_stacked_count >= N) {
+                  shift595_set_all(true);
+                  window.sim_xep_phase = 1;
+                  demo_last_time = now;
+                }
+              } else {
+                window.sim_drop_idx--;
               }
             }
-          } else if (demo_phase === 1) {
-            if (now - demo_last_time >= t2) {
-              demo_phase = 2;
-              demo_step = 0;
+          } else if (window.sim_xep_phase === 1) {
+            if (now - demo_last_time >= hold_full_time) {
+              window.sim_xep_phase = 2;
+              window.sim_drop_idx = 0;
               demo_last_time = now;
             }
-          } else if (demo_phase === 2) {
-            if (now - demo_last_time >= t1) {
+          } else if (window.sim_xep_phase === 2) {
+            if (now - demo_last_time >= unstack_speed) {
               demo_last_time = now;
-              demo_step++;
-              if (demo_step <= N) {
+              window.sim_drop_idx++;
+              if (window.sim_drop_idx <= N) {
                 let m = 0;
-                for (let i = 0; i < N - demo_step; i++) m = (m | (1 << i)) >>> 0;
+                for (let i = 0; i < N - window.sim_drop_idx; i++) {
+                  m = (m | (1 << i)) >>> 0;
+                }
                 shift595_set_mask(m);
               }
-              if (demo_step >= N) {
+              if (window.sim_drop_idx >= N) {
                 shift595_set_all(false);
-                demo_phase = 3;
+                window.sim_xep_phase = 3;
                 demo_last_time = now;
               }
             }
-          } else if (demo_phase === 3) {
-            if (now - demo_last_time >= 500) {
-              demo_phase = 0;
-              demo_step = 0;
+          } else if (window.sim_xep_phase === 3) {
+            if (now - demo_last_time >= 600) {
+              window.sim_stacked_count = 0;
+              window.sim_drop_idx = N - 1;
+              window.sim_xep_phase = 0;
               demo_last_time = now;
+              shift595_set_all(false);
             }
           }
           break;
         }
 
-        case 5: { // SAO BANG
-          // Tự động căn chỉnh tham số thời gian tối ưu đẹp nhất:
-          // - Tốc độ lướt: 45ms/bậc (vệt sao băng lướt nhanh, mượt)
-          // - Đuôi sao băng: 4-5 LED
-          // - Khoảng nghỉ: 450ms giữa 2 đợt
-          const METEOR_SPEED = 45;
-          const METEOR_PAUSE = 450;
-          const tail_len = (N >= 20) ? 5 : 4;
+        case 5: { // SAO BĂNG TỪ DƯỚI LÊN
+          const meteor_speed = (t0 >= 20 && t0 <= 5000) ? t0 : 45;
+          const METEOR_PAUSE = 400;
+          const tail_len = (config.meteor_leds >= 1 && config.meteor_leds <= 15) ? config.meteor_leds : 5;
 
           if (demo_phase === 0) {
-            if (now - demo_last_time >= METEOR_SPEED) {
+            if (now - demo_last_time >= meteor_speed) {
               demo_last_time = now;
               demo_step++;
               if (demo_step < N + tail_len) {
@@ -1184,7 +1252,39 @@
           break;
         }
 
-        case 6: { // NHAP NHAY
+        case 6: { // SAO BĂNG TỪ TRÊN XUỐNG
+          const meteor_speed = (t0 >= 20 && t0 <= 5000) ? t0 : 45;
+          const METEOR_PAUSE = 400;
+          const tail_len = (config.meteor_leds >= 1 && config.meteor_leds <= 15) ? config.meteor_leds : 5;
+
+          if (demo_phase === 0) {
+            if (now - demo_last_time >= meteor_speed) {
+              demo_last_time = now;
+              demo_step++;
+              if (demo_step < N + tail_len) {
+                let m = 0;
+                for (let k = 0; k < tail_len; k++) {
+                  let pos = (N - 1 - demo_step) + k;
+                  if (pos >= 0 && pos < N) m = (m | (1 << pos)) >>> 0;
+                }
+                shift595_set_mask(m);
+              } else {
+                shift595_set_all(false);
+                demo_phase = 1;
+                demo_last_time = now;
+              }
+            }
+          } else {
+            if (now - demo_last_time >= METEOR_PAUSE) {
+              demo_phase = 0;
+              demo_step = 0;
+              demo_last_time = now;
+            }
+          }
+          break;
+        }
+
+        case 7: { // CHỚP NHÁY ĐỒNG BỘ
           if (now - demo_last_time >= 350) {
             demo_last_time = now;
             demo_flag = !demo_flag;
@@ -1193,8 +1293,8 @@
           break;
         }
 
-        case 7: { // SO LE
-          const rate = t0 < 100 ? 250 : t0 * 2;
+        case 8: { // SO LE CHẴN LẺ
+          const rate = t0 < 100 ? 250 : (t0 > 400 ? 400 : t0 * 2);
           if (now - demo_last_time >= rate) {
             demo_last_time = now;
             demo_flag = !demo_flag;
@@ -1207,128 +1307,216 @@
           break;
         }
 
-        case 9: { // AUTO DEMO CYCLE
+        case 9: { // ALL OFF
+          shift595_set_all(false);
+          break;
+        }
+
+        case 10: { // AUTO DEMO: Mode 3 (1 lần), Mode 6 (5 lần), Mode 4 (1 lần), Mode 5 (5 lần), Mode 7 (5 lần), Mode 8 (10 lần)
           if (typeof window.sim_auto_sub === 'undefined') {
             window.sim_auto_sub = 0;
             window.sim_auto_cnt = 0;
           }
-          if (window.last_sim_demo_mode !== 9) {
-            window.sim_auto_sub = 0;
-            window.sim_auto_cnt = 0;
-            demo_phase = 0;
-            demo_step = 0;
-            demo_last_time = now;
-            demo_flag = false;
-            shift595_set_all(false);
-          }
 
           switch (window.sim_auto_sub) {
-            case 0: { // Sang don len
-              if (demo_phase === 0) {
-                if (now - demo_last_time >= t0) {
+            // --- 1. Mode 3: Xếp hình từ dưới lên (1 lần) ---
+            case 0: {
+              const xep_speed = (t0 >= 20 && t0 <= 5000) ? t0 : 40;
+              const unstack_speed = (t1 >= 20 && t1 <= 5000) ? t1 : 60;
+              const hold_full_time = 1000;
+
+              if (typeof window.sim_auto_xep_cnt === 'undefined') {
+                window.sim_auto_xep_cnt = 0;
+                window.sim_auto_drop_idx = 0;
+                window.sim_auto_xep_phase = 0;
+              }
+
+              if (window.sim_auto_xep_phase === 0) {
+                if (now - demo_last_time >= xep_speed) {
                   demo_last_time = now;
-                  demo_step++;
-                  if (demo_step <= N) {
-                    const m = (demo_step >= 32) ? 0xFFFFFFFF : (((1 << demo_step) - 1) >>> 0);
-                    shift595_set_mask(m);
-                  }
-                  if (demo_step >= N) {
-                    shift595_set_all(true);
-                    demo_phase = 1;
-                    demo_last_time = now;
+                  let m = 0;
+                  for (let i = N - window.sim_auto_xep_cnt; i < N; i++) m = (m | (1 << i)) >>> 0;
+                  if (window.sim_auto_drop_idx < N - window.sim_auto_xep_cnt) m = (m | (1 << window.sim_auto_drop_idx)) >>> 0;
+                  shift595_set_mask(m);
+
+                  if (window.sim_auto_drop_idx >= N - window.sim_auto_xep_cnt - 1) {
+                    window.sim_auto_xep_cnt++;
+                    window.sim_auto_drop_idx = 0;
+                    if (window.sim_auto_xep_cnt >= N) {
+                      shift595_set_all(true);
+                      window.sim_auto_xep_phase = 1;
+                      demo_last_time = now;
+                    }
+                  } else {
+                    window.sim_auto_drop_idx++;
                   }
                 }
-              } else if (demo_phase === 1) {
-                const hold = (t2 > 2500) ? 2500 : t2;
-                if (now - demo_last_time >= hold) {
-                  demo_phase = 2;
-                  demo_step = 0;
+              } else if (window.sim_auto_xep_phase === 1) {
+                if (now - demo_last_time >= hold_full_time) {
+                  window.sim_auto_xep_phase = 2;
+                  window.sim_auto_drop_idx = 0;
                   demo_last_time = now;
                 }
-              } else if (demo_phase === 2) {
-                if (now - demo_last_time >= t1) {
+              } else if (window.sim_auto_xep_phase === 2) {
+                if (now - demo_last_time >= unstack_speed) {
                   demo_last_time = now;
-                  demo_step++;
-                  if (demo_step <= N) {
+                  window.sim_auto_drop_idx++;
+                  if (window.sim_auto_drop_idx <= N) {
                     let m = 0;
-                    for (let i = demo_step; i < N; i++) m = (m | (1 << i)) >>> 0;
+                    for (let i = window.sim_auto_drop_idx; i < N; i++) m = (m | (1 << i)) >>> 0;
                     shift595_set_mask(m);
                   }
-                  if (demo_step >= N) {
+                  if (window.sim_auto_drop_idx >= N) {
                     shift595_set_all(false);
-                    demo_phase = 3;
+                    window.sim_auto_xep_phase = 3;
                     demo_last_time = now;
                   }
                 }
-              } else if (demo_phase === 3) {
+              } else if (window.sim_auto_xep_phase === 3) {
                 if (now - demo_last_time >= 400) {
-                  window.sim_auto_sub = 1;
-                  demo_phase = 0;
-                  demo_step = 0;
+                  window.sim_auto_cnt++;
+                  window.sim_auto_xep_cnt = 0;
+                  window.sim_auto_drop_idx = 0;
+                  window.sim_auto_xep_phase = 0;
                   demo_last_time = now;
                   shift595_set_all(false);
+
+                  if (window.sim_auto_cnt >= 1) {
+                    window.sim_auto_sub = 1; // Chuyển sang Mode 6: Sao Băng từ trên xuống (5 lần)
+                    window.sim_auto_cnt = 0;
+                    demo_phase = 0;
+                    demo_step = 0;
+                  }
                 }
               }
               break;
             }
 
-            case 1: { // Sang don xuong
-              if (demo_phase === 0) {
-                if (now - demo_last_time >= t0) {
-                  demo_last_time = now;
-                  demo_step++;
-                  if (demo_step <= N) {
-                    let m = 0;
-                    for (let i = 0; i < demo_step; i++) m = (m | (1 << (N - 1 - i))) >>> 0;
-                    shift595_set_mask(m);
-                  }
-                  if (demo_step >= N) {
-                    shift595_set_all(true);
-                    demo_phase = 1;
-                    demo_last_time = now;
-                  }
-                }
-              } else if (demo_phase === 1) {
-                const hold = (t2 > 2500) ? 2500 : t2;
-                if (now - demo_last_time >= hold) {
-                  demo_phase = 2;
-                  demo_step = 0;
-                  demo_last_time = now;
-                }
-              } else if (demo_phase === 2) {
-                if (now - demo_last_time >= t1) {
-                  demo_last_time = now;
-                  demo_step++;
-                  if (demo_step <= N) {
-                    let m = 0;
-                    for (let i = 0; i < N - demo_step; i++) m = (m | (1 << i)) >>> 0;
-                    shift595_set_mask(m);
-                  }
-                  if (demo_step >= N) {
-                    shift595_set_all(false);
-                    demo_phase = 3;
-                    demo_last_time = now;
-                  }
-                }
-              } else if (demo_phase === 3) {
-                if (now - demo_last_time >= 400) {
-                  window.sim_auto_sub = 2;
-                  window.sim_auto_cnt = 0;
-                  demo_phase = 0;
-                  demo_step = 0;
-                  demo_last_time = now;
-                  shift595_set_all(false);
-                }
-              }
-              break;
-            }
-
-            case 2: { // Sao bang (3 dot)
-              const METEOR_SPEED = 45;
+            // --- 2. Mode 6: Sao Băng từ trên xuống (5 lần) ---
+            case 1: {
+              const meteor_speed = (t0 >= 20 && t0 <= 5000) ? t0 : 45;
               const METEOR_PAUSE = 400;
-              const tail_len = (N >= 20) ? 5 : 4;
+              const tail_len = (config.meteor_leds >= 1 && config.meteor_leds <= 15) ? config.meteor_leds : 5;
+
               if (demo_phase === 0) {
-                if (now - demo_last_time >= METEOR_SPEED) {
+                if (now - demo_last_time >= meteor_speed) {
+                  demo_last_time = now;
+                  demo_step++;
+                  if (demo_step < N + tail_len) {
+                    let m = 0;
+                    for (let k = 0; k < tail_len; k++) {
+                      let pos = (N - 1 - demo_step) + k;
+                      if (pos >= 0 && pos < N) m = (m | (1 << pos)) >>> 0;
+                    }
+                    shift595_set_mask(m);
+                  } else {
+                    shift595_set_all(false);
+                    demo_phase = 1;
+                    demo_last_time = now;
+                  }
+                }
+              } else {
+                if (now - demo_last_time >= METEOR_PAUSE) {
+                  window.sim_auto_cnt++;
+                  demo_phase = 0;
+                  demo_step = 0;
+                  demo_last_time = now;
+
+                  if (window.sim_auto_cnt >= 5) {
+                    window.sim_auto_sub = 2; // Chuyển sang Mode 4: Xếp hình từ trên xuống (1 lần)
+                    window.sim_auto_cnt = 0;
+                    window.sim_auto_drop_idx = N - 1;
+                    window.sim_auto_xep_cnt = 0;
+                    window.sim_auto_xep_phase = 0;
+                  }
+                }
+              }
+              break;
+            }
+
+            // --- 3. Mode 4: Xếp hình từ trên xuống (1 lần) ---
+            case 2: {
+              const xep_speed = (t0 >= 20 && t0 <= 5000) ? t0 : 40;
+              const unstack_speed = (t1 >= 20 && t1 <= 5000) ? t1 : 60;
+              const hold_full_time = 1000;
+
+              if (typeof window.sim_auto_xep_cnt === 'undefined') {
+                window.sim_auto_xep_cnt = 0;
+                window.sim_auto_drop_idx = N - 1;
+                window.sim_auto_xep_phase = 0;
+              }
+
+              if (window.sim_auto_xep_phase === 0) {
+                if (now - demo_last_time >= xep_speed) {
+                  demo_last_time = now;
+                  let m = 0;
+                  for (let i = 0; i < window.sim_auto_xep_cnt && i < N; i++) m = (m | (1 << i)) >>> 0;
+                  if (window.sim_auto_drop_idx >= window.sim_auto_xep_cnt && window.sim_auto_drop_idx < N) {
+                    m = (m | (1 << window.sim_auto_drop_idx)) >>> 0;
+                  }
+                  shift595_set_mask(m);
+
+                  if (window.sim_auto_drop_idx <= window.sim_auto_xep_cnt) {
+                    window.sim_auto_xep_cnt++;
+                    window.sim_auto_drop_idx = N - 1;
+                    if (window.sim_auto_xep_cnt >= N) {
+                      shift595_set_all(true);
+                      window.sim_auto_xep_phase = 1;
+                      demo_last_time = now;
+                    }
+                  } else {
+                    window.sim_auto_drop_idx--;
+                  }
+                }
+              } else if (window.sim_auto_xep_phase === 1) {
+                if (now - demo_last_time >= hold_full_time) {
+                  window.sim_auto_xep_phase = 2;
+                  window.sim_auto_drop_idx = 0;
+                  demo_last_time = now;
+                }
+              } else if (window.sim_auto_xep_phase === 2) {
+                if (now - demo_last_time >= unstack_speed) {
+                  demo_last_time = now;
+                  window.sim_auto_drop_idx++;
+                  if (window.sim_auto_drop_idx <= N) {
+                    let m = 0;
+                    for (let i = 0; i < N - window.sim_auto_drop_idx; i++) m = (m | (1 << i)) >>> 0;
+                    shift595_set_mask(m);
+                  }
+                  if (window.sim_auto_drop_idx >= N) {
+                    shift595_set_all(false);
+                    window.sim_auto_xep_phase = 3;
+                    demo_last_time = now;
+                  }
+                }
+              } else if (window.sim_auto_xep_phase === 3) {
+                if (now - demo_last_time >= 400) {
+                  window.sim_auto_cnt++;
+                  window.sim_auto_xep_cnt = 0;
+                  window.sim_auto_drop_idx = N - 1;
+                  window.sim_auto_xep_phase = 0;
+                  demo_last_time = now;
+                  shift595_set_all(false);
+
+                  if (window.sim_auto_cnt >= 1) {
+                    window.sim_auto_sub = 3; // Chuyển sang Mode 5: Sao Băng từ dưới lên (5 lần)
+                    window.sim_auto_cnt = 0;
+                    demo_phase = 0;
+                    demo_step = 0;
+                  }
+                }
+              }
+              break;
+            }
+
+            // --- 4. Mode 5: Sao Băng từ dưới lên (5 lần) ---
+            case 3: {
+              const meteor_speed = (t0 >= 20 && t0 <= 5000) ? t0 : 45;
+              const METEOR_PAUSE = 400;
+              const tail_len = (config.meteor_leds >= 1 && config.meteor_leds <= 15) ? config.meteor_leds : 5;
+
+              if (demo_phase === 0) {
+                if (now - demo_last_time >= meteor_speed) {
                   demo_last_time = now;
                   demo_step++;
                   if (demo_step < N + tail_len) {
@@ -1342,39 +1530,66 @@
                     shift595_set_all(false);
                     demo_phase = 1;
                     demo_last_time = now;
-                    window.sim_auto_cnt++;
                   }
                 }
               } else {
                 if (now - demo_last_time >= METEOR_PAUSE) {
-                  if (window.sim_auto_cnt >= 3) {
-                    window.sim_auto_sub = 3;
+                  window.sim_auto_cnt++;
+                  demo_phase = 0;
+                  demo_step = 0;
+                  demo_last_time = now;
+
+                  if (window.sim_auto_cnt >= 5) {
+                    window.sim_auto_sub = 4; // Chuyển sang Mode 7: Chớp nháy đồng bộ (5 lần)
                     window.sim_auto_cnt = 0;
-                    demo_phase = 0;
-                    demo_step = 0;
-                    demo_last_time = now;
                     demo_flag = false;
-                    shift595_set_all(false);
-                  } else {
-                    demo_phase = 0;
-                    demo_step = 0;
-                    demo_last_time = now;
                   }
                 }
               }
               break;
             }
 
-            case 3: { // So le (8 nhip)
-              const rate = (t0 < 100) ? 250 : (t0 > 400 ? 400 : t0 * 2);
+            // --- 5. Mode 7: Chớp nháy đồng bộ (5 lần) ---
+            case 4: {
+              if (now - demo_last_time >= 350) {
+                demo_last_time = now;
+                demo_flag = !demo_flag;
+                shift595_set_all(demo_flag);
+                window.sim_auto_cnt++;
+
+                if (window.sim_auto_cnt >= 10) { // 5 chu kỳ Bật - Tắt
+                  shift595_set_all(false);
+                  window.sim_auto_sub = 5; // Chuyển sang Mode 8: So le (10 lần)
+                  window.sim_auto_cnt = 0;
+                  demo_flag = false;
+                  demo_last_time = now;
+                }
+              }
+              break;
+            }
+
+            // --- 6. Mode 8: Sáng, tắt so le chẵn lẻ (10 lần) ---
+            case 5: {
+              const rate = t0 < 100 ? 250 : (t0 > 400 ? 400 : t0 * 2);
               if (now - demo_last_time >= rate) {
                 demo_last_time = now;
                 demo_flag = !demo_flag;
-                shift595_set_mask(demo_flag ? ((0x55555555 & total_mask) >>> 0) : ((0xAAAAAAAA & total_mask) >>> 0));
+                if (demo_flag) {
+                  shift595_set_mask((0x55555555 & total_mask) >>> 0);
+                } else {
+                  shift595_set_mask((0xAAAAAAAA & total_mask) >>> 0);
+                }
                 window.sim_auto_cnt++;
-                if (window.sim_auto_cnt >= 8) {
-                  window.sim_auto_sub = 4;
+
+                if (window.sim_auto_cnt >= 20) { // 10 chu kỳ đổi bên chẵn/lẻ (20 nhịp)
+                  shift595_set_all(false);
+                  window.sim_auto_sub = 0; // Quay lại từ đầu: Mode 3 (1 lần)
                   window.sim_auto_cnt = 0;
+                  window.sim_auto_xep_cnt = 0;
+                  window.sim_auto_drop_idx = 0;
+                  window.sim_auto_xep_phase = 0;
+                  demo_phase = 0;
+                  demo_step = 0;
                   demo_last_time = now;
                   demo_flag = false;
                   shift595_set_all(false);
@@ -1382,44 +1597,11 @@
               }
               break;
             }
-
-            case 4: { // Chop nhay (6 nhip)
-              if (now - demo_last_time >= 350) {
-                demo_last_time = now;
-                demo_flag = !demo_flag;
-                shift595_set_all(demo_flag);
-                window.sim_auto_cnt++;
-                if (window.sim_auto_cnt >= 6) {
-                  window.sim_auto_sub = 5;
-                  demo_last_time = now;
-                  shift595_set_all(true);
-                }
-              }
-              break;
-            }
-
-            case 5: { // Sang toan bo 2.5s roi quay lai
-              if (now - demo_last_time >= 2500) {
-                window.sim_auto_sub = 0;
-                window.sim_auto_cnt = 0;
-                demo_phase = 0;
-                demo_step = 0;
-                demo_last_time = now;
-                demo_flag = false;
-                shift595_set_all(false);
-              }
-              break;
-            }
           }
           break;
         }
-
-        case 8: // ALL OFF
-          shift595_set_all(false);
-          break;
       }
     }
-
     // ====================================================================
     // 6. RENDER GIAO DIỆN & CẬP NHẬT TRỰC QUAN
     // ====================================================================
@@ -1566,14 +1748,47 @@
     // ====================================================================
     // 8. CONFIGURATION CONTROLS
     // ====================================================================
+    function updateVisibleFields() {
+      const mode = parseInt(config.mode);
+      const settingsGroup = document.getElementById("sim-settings-group");
+      const meteorGroup = document.getElementById("group-sim-meteor");
+      const notice = document.getElementById("sim-mode-notice");
+      const presetsBox = document.getElementById("sim-presets-box");
+
+      if (mode === 2) {
+        settingsGroup.style.display = "none";
+        presetsBox.style.display = "none";
+        notice.style.display = "block";
+        notice.innerHTML = "💡 <strong>Chế độ Kiểm tra LED:</strong> Toàn bộ các bậc LED sẽ luôn sáng để kiểm tra đèn và mạch (không cần tham số cài đặt).";
+      } else if (mode === 9) {
+        settingsGroup.style.display = "none";
+        presetsBox.style.display = "none";
+        notice.style.display = "block";
+        notice.innerHTML = "🌑 <strong>Chế độ Tắt toàn bộ LED:</strong> Toàn bộ các bậc LED sẽ luôn tắt (không cần tham số cài đặt).";
+      } else {
+        settingsGroup.style.display = "contents";
+        presetsBox.style.display = "block";
+        notice.style.display = "none";
+
+        if (mode === 5 || mode === 6) {
+          meteorGroup.style.display = "block";
+        } else {
+          meteorGroup.style.display = "none";
+        }
+      }
+    }
+
     function onConfigChange() {
       const oldN = config.number_step;
       config.number_step = parseInt(document.getElementById("input-n").value);
+      const meteorEl = document.getElementById("input-meteor");
+      if (meteorEl) config.meteor_leds = parseInt(meteorEl.value);
       config.t0 = parseInt(document.getElementById("input-t0").value);
       config.t1 = parseInt(document.getElementById("input-t1").value);
       config.t2 = parseInt(document.getElementById("input-t2").value);
 
       document.getElementById("val-n").innerText = config.number_step;
+      if (meteorEl) document.getElementById("val-meteor").innerText = config.meteor_leds + " LED";
       document.getElementById("val-t0").innerText = config.t0 + " ms";
       document.getElementById("val-t1").innerText = config.t1 + " ms";
       document.getElementById("val-t2").innerText = config.t2 + " ms";
@@ -1591,6 +1806,7 @@
       demo_last_time = performance.now();
       demo_flag = false;
       triggerReset();
+      updateVisibleFields();
       logMessage(`[HỆ THỐNG] Chuyển sang chế độ: ${document.getElementById("sel-mode").selectedOptions[0].text}`);
     }
 
@@ -1618,6 +1834,7 @@
 
     // Khởi tạo ban đầu
     renderStairsList();
+    updateVisibleFields();
     requestAnimationFrame(mainLoop);
   </script>
 </body>

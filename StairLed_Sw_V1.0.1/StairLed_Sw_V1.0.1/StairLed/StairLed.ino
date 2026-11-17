@@ -5,7 +5,7 @@
 #include "webpage.h"
 
 // Thông tin mạng WiFi Access Point (Cố định phần mềm, không đổi qua web)
-const char* AP_SSID = "StairLed_CTECK";
+const char* AP_SSID = "StairLed_CTECK_C001";
 const char* AP_PASS = "12345678";
 
 // Cổng DNS cho Captive Portal
@@ -273,11 +273,11 @@ void cancelFadeOffAndRunUp() {
   stair_state = STATE_RUN_UP;
   step_idx = 0;
   fade_step = 0;
-  shift595_clear_all();
+  // Giữ nguyên trạng thái các LED đang sáng, chỉ bật thêm bậc 1 (index 0)
   shift595_set_pin(step_idx, true);
   last_step_time = millis();
   next_off_state = STATE_OFF_UP;
-  Serial.printf_P(PSTR("[FSM] -> HỦY TẮT DẦN: Người mới đi lên -> Sáng dồn từ dưới lên (Bậc 1/%u, t0=%ums)\n"), N, t0);
+  Serial.printf_P(PSTR("[FSM] -> HỦY TẮT DẦN: Người mới đi lên -> Giữ LED đang sáng, sáng dồn từ dưới lên (Bậc 1/%u, t0=%ums)\n"), N, t0);
 }
 
 void cancelFadeOffAndRunDown() {
@@ -287,11 +287,11 @@ void cancelFadeOffAndRunDown() {
   stair_state = STATE_RUN_DOWN;
   step_idx = N - 1;
   fade_step = 0;
-  shift595_clear_all();
+  // Giữ nguyên trạng thái các LED đang sáng, chỉ bật thêm bậc N (index N-1)
   shift595_set_pin(step_idx, true);
   last_step_time = millis();
   next_off_state = STATE_OFF_DOWN;
-  Serial.printf_P(PSTR("[FSM] -> HỦY TẮT DẦN: Người mới đi xuống -> Sáng dồn từ trên xuống (Bậc %u/%u, t0=%ums)\n"), N, N, t0);
+  Serial.printf_P(PSTR("[FSM] -> HỦY TẮT DẦN: Người mới đi xuống -> Giữ LED đang sáng, sáng dồn từ trên xuống (Bậc %u/%u, t0=%ums)\n"), N, N, t0);
 }
 
 void cancelFadeOffAndRunBoth() {
@@ -302,12 +302,12 @@ void cancelFadeOffAndRunBoth() {
   step_idx = 0;
   step_idx2 = N - 1;
   fade_step = 0;
-  shift595_clear_all();
+  // Giữ nguyên trạng thái các LED đang sáng, bật thêm bậc 1 và bậc N
   shift595_set_pin(step_idx, true, false);
   shift595_set_pin(step_idx2, true, true);
   last_step_time = millis();
   next_off_state = STATE_OFF_BOTH;
-  Serial.printf_P(PSTR("[FSM] -> HỦY TẮT DẦN: Cả 2 hướng cùng đi -> Sáng dồn từ 2 phía vào giữa (t0=%ums)\n"), t0);
+  Serial.printf_P(PSTR("[FSM] -> HỦY TẮT DẦN: Cả 2 hướng cùng đi -> Giữ LED đang sáng, sáng dồn 2 đầu vào giữa (t0=%ums)\n"), t0);
 }
 
 void updateStairStateMachine() {
@@ -376,6 +376,22 @@ void updateStairStateMachine() {
     // TRƯỜNG HỢP 1: ĐANG SÁNG DỒN TỪ DƯỚI LÊN (1 -> N, mỗi bậc t0)
     // -------------------------------------------------------------
     case STATE_RUN_UP: {
+      // Bổ sung: Đang sáng dồn lên thì cảm biến trên (SS2) phát hiện người đi xuống
+      if (trig2) {
+        Serial.println(F("[FSM] -> Đang sáng dồn lên thì SS2 (TRÊN) phát hiện người -> Chuyển sang sáng 2 đầu vào giữa!"));
+        stair_state = STATE_RUN_BOTH;
+        step_idx2 = N - 1; // Khởi tạo luồng trên từ bậc đỉnh (N-1)
+        shift595_set_pin(step_idx2, true); // Bật sáng ngay bậc đỉnh
+        next_off_state = STATE_OFF_BOTH;
+        if (step_idx >= step_idx2) {
+          shift595_set_all(true);
+          stair_state = STATE_HOLD;
+          hold_start_time = now;
+          Serial.println(F("[FSM] -> Hai luồng sáng chạm nhau -> Chuyển sang GIỮ SÁNG t2 (HOLD)"));
+        }
+        break;
+      }
+
       if (now - last_step_time >= t0) {
         last_step_time = now;
         step_idx++;
@@ -398,6 +414,23 @@ void updateStairStateMachine() {
     // TRƯỜNG HỢP 2: ĐANG SÁNG DỒN TỪ TRÊN XUỐNG (N -> 1, mỗi bậc t0)
     // -------------------------------------------------------------
     case STATE_RUN_DOWN: {
+      // Bổ sung: Đang sáng dồn xuống thì cảm biến dưới (SS1) phát hiện người đi lên
+      if (trig1) {
+        Serial.println(F("[FSM] -> Đang sáng dồn xuống thì SS1 (DƯỚI) phát hiện người -> Chuyển sang sáng 2 đầu vào giữa!"));
+        stair_state = STATE_RUN_BOTH;
+        step_idx2 = step_idx; // Lưu lại vị trí luồng trên đang chạy
+        step_idx = 0;         // Khởi tạo luồng dưới từ bậc đáy (0)
+        shift595_set_pin(step_idx, true); // Bật sáng ngay bậc đáy
+        next_off_state = STATE_OFF_BOTH;
+        if (step_idx >= step_idx2) {
+          shift595_set_all(true);
+          stair_state = STATE_HOLD;
+          hold_start_time = now;
+          Serial.println(F("[FSM] -> Hai luồng sáng chạm nhau -> Chuyển sang GIỮ SÁNG t2 (HOLD)"));
+        }
+        break;
+      }
+
       if (now - last_step_time >= t0) {
         last_step_time = now;
         step_idx--;
@@ -625,48 +658,79 @@ void runDemoEffects() {
       shift595_set_all(false);
       break;
 
-    case MODE_SANG_DON_LEN: {
-      // Chu trình: Sáng dồn từ dưới lên (t0) -> Giữ sáng (t2) -> Tắt dồn từ dưới lên (t1) -> Lặp lại
-      if (demo_phase == 0) {
-        // Giai đoạn 0: Sáng dồn từ dưới lên (1 -> N, mỗi bậc t0)
-        if (now - demo_last_time >= t0) {
+    // -------------------------------------------------------------
+    // CHẾ ĐỘ 3: XẾP HÌNH TỪ DƯỚI LÊN (Bắn từ chân thang lên đỉnh đọng lại)
+    // -------------------------------------------------------------
+    case MODE_XEP_HINH_LEN: {
+      static uint8_t stacked_count = 0; // Số bậc đã được xếp cố định ở đỉnh (0 -> N)
+      static int16_t drop_idx = 0;      // Vị trí viên gạch đang di chuyển
+      static uint8_t xep_sub_phase = 0; // 0: Xếp gạch, 1: Giữ sáng, 2: Dỡ gạch, 3: Nghỉ
+
+      static uint8_t last_xep_mode = 0;
+      if (last_xep_mode != config.mode) {
+        last_xep_mode = config.mode;
+        stacked_count = 0;
+        drop_idx = 0;
+        xep_sub_phase = 0;
+        demo_last_time = now;
+        shift595_clear_all();
+      }
+
+      uint16_t stack_speed   = (config.t0 >= 20 && config.t0 <= 5000) ? config.t0 : 40;
+      uint16_t unstack_speed = (config.t1 >= 20 && config.t1 <= 5000) ? config.t1 : 60;
+      uint16_t hold_full_time= (config.t2 >= 500 && config.t2 <= 60000) ? config.t2 : 2000;
+
+      if (xep_sub_phase == 0) {
+        // Giai đoạn xếp gạch (tốc độ theo t0)
+        if (now - demo_last_time >= stack_speed) {
           demo_last_time = now;
-          demo_step++;
-          if (demo_step <= N) {
-            shift595_set_pin(demo_step - 1, true);
+
+          memset(led_buffer, 0, sizeof(led_buffer));
+          for (uint8_t i = N - stacked_count; i < N; i++) {
+            led_buffer[i / 8] |= (1 << (i % 8));
           }
-          if (demo_step >= N) {
-            shift595_set_all(true);
-            demo_phase = 1; // Chuyển sang Giữ sáng t2
+          if (drop_idx < (int16_t)(N - stacked_count)) {
+            led_buffer[drop_idx / 8] |= (1 << (drop_idx % 8));
+          }
+          shift595_update();
+
+          if (drop_idx >= (int16_t)(N - stacked_count - 1)) {
+            stacked_count++;
+            drop_idx = 0;
+
+            if (stacked_count >= N) {
+              shift595_set_all(true);
+              xep_sub_phase = 1;
+              demo_last_time = now;
+            }
+          } else {
+            drop_idx++;
+          }
+        }
+      } else if (xep_sub_phase == 1) {
+        if (now - demo_last_time >= hold_full_time) {
+          xep_sub_phase = 2;
+          drop_idx = 0;
+          demo_last_time = now;
+        }
+      } else if (xep_sub_phase == 2) {
+        if (now - demo_last_time >= unstack_speed) {
+          demo_last_time = now;
+          drop_idx++;
+          if (drop_idx <= N) {
+            shift595_set_pin(drop_idx - 1, false);
+          }
+          if (drop_idx >= N) {
+            shift595_clear_all();
+            xep_sub_phase = 3;
             demo_last_time = now;
           }
         }
-      } else if (demo_phase == 1) {
-        // Giai đoạn 1: Giữ sáng toàn bộ trong thời gian t2
-        if (now - demo_last_time >= t2) {
-          demo_phase = 2; // Chuyển sang Tắt dồn từ dưới lên
-          demo_step = 0;
-          demo_last_time = now;
-        }
-      } else if (demo_phase == 2) {
-        // Giai đoạn 2: Tắt dồn từ dưới lên (1 -> N, mỗi bậc t1)
-        if (now - demo_last_time >= t1) {
-          demo_last_time = now;
-          demo_step++;
-          if (demo_step <= N) {
-            shift595_set_pin(demo_step - 1, false);
-          }
-          if (demo_step >= N) {
-            shift595_set_all(false);
-            demo_phase = 3; // Nghỉ tắt
-            demo_last_time = now;
-          }
-        }        
-      } else if (demo_phase == 3) {
-        // Giai đoạn 3: Nghỉ tắt 500ms trước khi lặp lại chu trình
-        if (now - demo_last_time >= 500) {
-          demo_phase = 0;
-          demo_step = 0;
+      } else if (xep_sub_phase == 3) {
+        if (now - demo_last_time >= 600) {
+          stacked_count = 0;
+          drop_idx = 0;
+          xep_sub_phase = 0;
           demo_last_time = now;
           shift595_clear_all();
         }
@@ -674,48 +738,82 @@ void runDemoEffects() {
       break;
     }
 
-    case MODE_SANG_DON_XUONG: {
-      // Chu trình: Sáng dồn từ trên xuống (t0) -> Giữ sáng (t2) -> Tắt dồn từ trên xuống (t1) -> Lặp lại
-      if (demo_phase == 0) {
-        // Giai đoạn 0: Sáng dồn từ trên xuống (N -> 1, mỗi bậc t0)
-        if (now - demo_last_time >= t0) {
+    // -------------------------------------------------------------
+    // CHẾ ĐỘ 4: XẾP HÌNH TỪ TRÊN XUỐNG (Rơi từ đỉnh xuống đáy đọng lại)
+    // -------------------------------------------------------------
+    case MODE_XEP_HINH_XUONG: {
+      static uint8_t stacked_count = 0; // Số bậc đã đọng ở đáy (0 -> N)
+      static int16_t drop_idx = 0;      // Vị trí viên gạch đang rơi từ đỉnh xuống
+      static uint8_t xep_sub_phase = 0; // 0: Xếp gạch, 1: Giữ sáng, 2: Dỡ gạch, 3: Nghỉ
+
+      static uint8_t last_xep_mode = 0;
+      if (last_xep_mode != config.mode) {
+        last_xep_mode = config.mode;
+        stacked_count = 0;
+        drop_idx = N - 1;
+        xep_sub_phase = 0;
+        demo_last_time = now;
+        shift595_clear_all();
+      }
+
+      uint16_t stack_speed   = (config.t0 >= 20 && config.t0 <= 5000) ? config.t0 : 40;
+      uint16_t unstack_speed = (config.t1 >= 20 && config.t1 <= 5000) ? config.t1 : 60;
+      uint16_t hold_full_time= (config.t2 >= 500 && config.t2 <= 60000) ? config.t2 : 2000;
+
+      if (xep_sub_phase == 0) {
+        // Viên gạch rơi từ đỉnh N-1 xuống đáy
+        if (now - demo_last_time >= stack_speed) {
           demo_last_time = now;
-          demo_step++;
-          if (demo_step <= N) {
-            shift595_set_pin(N - demo_step, true);
+
+          memset(led_buffer, 0, sizeof(led_buffer));
+          // Các bậc đã cố định ở đáy: từ 0 đến stacked_count - 1
+          for (uint8_t i = 0; i < stacked_count && i < N; i++) {
+            led_buffer[i / 8] |= (1 << (i % 8));
           }
-          if (demo_step >= N) {
-            shift595_set_all(true);
-            demo_phase = 1; // Chuyển sang Giữ sáng t2
+          // Viên gạch đang rơi
+          if (drop_idx >= (int16_t)stacked_count && drop_idx < (int16_t)N) {
+            led_buffer[drop_idx / 8] |= (1 << (drop_idx % 8));
+          }
+          shift595_update();
+
+          if (drop_idx <= (int16_t)stacked_count) {
+            stacked_count++;
+            drop_idx = N - 1; // Viên tiếp theo rơi lại từ đỉnh
+
+            if (stacked_count >= N) {
+              shift595_set_all(true);
+              xep_sub_phase = 1;
+              demo_last_time = now;
+            }
+          } else {
+            drop_idx--;
+          }
+        }
+      } else if (xep_sub_phase == 1) {
+        if (now - demo_last_time >= hold_full_time) {
+          xep_sub_phase = 2;
+          drop_idx = 0;
+          demo_last_time = now;
+        }
+      } else if (xep_sub_phase == 2) {
+        // Dỡ gạch từ đỉnh xuống đáy theo unstack_speed
+        if (now - demo_last_time >= unstack_speed) {
+          demo_last_time = now;
+          drop_idx++;
+          if (drop_idx <= N) {
+            shift595_set_pin(N - drop_idx, false);
+          }
+          if (drop_idx >= N) {
+            shift595_clear_all();
+            xep_sub_phase = 3;
             demo_last_time = now;
           }
         }
-      } else if (demo_phase == 1) {
-        // Giai đoạn 1: Giữ sáng toàn bộ trong thời gian t2
-        if (now - demo_last_time >= t2) {
-          demo_phase = 2; // Chuyển sang Tắt dồn từ trên xuống
-          demo_step = 0;
-          demo_last_time = now;
-        }
-      } else if (demo_phase == 2) {
-        // Giai đoạn 2: Tắt dồn từ trên xuống (N -> 1, mỗi bậc t1)
-        if (now - demo_last_time >= t1) {
-          demo_last_time = now;
-          demo_step++;
-          if (demo_step <= N) {
-            shift595_set_pin(N - demo_step, false);
-          }
-          if (demo_step >= N) {
-            shift595_set_all(false);
-            demo_phase = 3; // Nghỉ tắt
-            demo_last_time = now;
-          }
-        }
-      } else if (demo_phase == 3) {
-        // Giai đoạn 3: Nghỉ tắt 500ms trước khi lặp lại chu trình
-        if (now - demo_last_time >= 500) {
-          demo_phase = 0;
-          demo_step = 0;
+      } else if (xep_sub_phase == 3) {
+        if (now - demo_last_time >= 600) {
+          stacked_count = 0;
+          drop_idx = N - 1;
+          xep_sub_phase = 0;
           demo_last_time = now;
           shift595_clear_all();
         }
@@ -723,18 +821,16 @@ void runDemoEffects() {
       break;
     }
 
-    case MODE_SAO_BANG: {
-      // Hiệu ứng Sao băng / Rượt đuổi tự động căn chỉnh thời gian tối ưu đẹp nhất:
-      // - Tốc độ lướt: 45ms/bậc (vệt sáng lướt vun vút, mượt mà, không giật)
-      // - Chiều dài vệt đuôi: 4-5 LED (tỷ lệ chuẩn theo số bậc)
-      // - Khoảng nghỉ sau mỗi vệt: 450ms (tạo khoảng lặng trước khi đợt sao băng mới xẹt qua)
-      const uint16_t METEOR_SPEED = 45;       // 45ms mỗi bước dịch chuyển
-      const uint16_t METEOR_PAUSE = 450;      // 450ms khoảng nghỉ giữa các đợt sao băng
-      uint8_t tail_len = (N >= 20) ? 5 : 4;   // Chiều dài đuôi sao băng
+    // -------------------------------------------------------------
+    // CHẾ ĐỘ 5: SAO BĂNG TỪ DƯỚI LÊN (Chỉnh được số LED meteor_leds)
+    // -------------------------------------------------------------
+    case MODE_SAO_BANG_LEN: {
+      uint16_t meteor_speed = (config.t0 >= 20 && config.t0 <= 5000) ? config.t0 : 45;
+      const uint16_t METEOR_PAUSE = 450;
+      uint8_t tail_len = (config.meteor_leds >= 1 && config.meteor_leds <= 15) ? config.meteor_leds : 5;
 
       if (demo_phase == 0) {
-        // Giai đoạn sao băng đang lướt qua cầu thang
-        if (now - demo_last_time >= METEOR_SPEED) {
+        if (now - demo_last_time >= meteor_speed) {
           demo_last_time = now;
           demo_step++;
 
@@ -748,14 +844,50 @@ void runDemoEffects() {
             }
             shift595_update();
           } else {
-            // Sao băng đã bay hết cầu thang -> Tắt toàn bộ và chuyển sang giai đoạn nghỉ ngắn
             shift595_set_all(false);
             demo_phase = 1;
             demo_last_time = now;
           }
         }
       } else {
-        // Giai đoạn nghỉ 450ms giữa 2 đợt sao băng
+        if (now - demo_last_time >= METEOR_PAUSE) {
+          demo_phase = 0;
+          demo_step = 0;
+          demo_last_time = now;
+        }
+      }
+      break;
+    }
+
+    // -------------------------------------------------------------
+    // CHẾ ĐỘ 6: SAO BĂNG TỪ TRÊN XUỐNG (Chỉnh được số LED meteor_leds)
+    // -------------------------------------------------------------
+    case MODE_SAO_BANG_XUONG: {
+      uint16_t meteor_speed = (config.t0 >= 20 && config.t0 <= 5000) ? config.t0 : 45;
+      const uint16_t METEOR_PAUSE = 450;
+      uint8_t tail_len = (config.meteor_leds >= 1 && config.meteor_leds <= 15) ? config.meteor_leds : 5;
+
+      if (demo_phase == 0) {
+        if (now - demo_last_time >= meteor_speed) {
+          demo_last_time = now;
+          demo_step++;
+
+          if (demo_step < N + tail_len) {
+            memset(led_buffer, 0, sizeof(led_buffer));
+            for (uint8_t k = 0; k < tail_len; k++) {
+              int pos = (N - 1 - demo_step) + k;
+              if (pos >= 0 && pos < N) {
+                led_buffer[pos / 8] |= (1 << (pos % 8));
+              }
+            }
+            shift595_update();
+          } else {
+            shift595_set_all(false);
+            demo_phase = 1;
+            demo_last_time = now;
+          }
+        }
+      } else {
         if (now - demo_last_time >= METEOR_PAUSE) {
           demo_phase = 0;
           demo_step = 0;
@@ -793,22 +925,28 @@ void runDemoEffects() {
     }
 
     case MODE_AUTO_DEMO: {
-      // Chế độ 9: Chạy toàn bộ các chế độ (không dùng cảm biến)
-      // Thứ tự tuần hoàn:
-      //   1. Sáng dồn từ dưới lên -> Giữ sáng -> Tắt dồn
-      //   2. Sáng dồn từ trên xuống -> Giữ sáng -> Tắt dồn
-      //   3. Sao băng / rượt đuổi (3 đợt lướt qua)
-      //   4. Sáng tắt so le chẵn - lẻ (8 nhịp đảo chiều)
-      //   5. Chớp nháy đồng bộ (6 nhịp nhấp nháy)
-      //   6. Sáng toàn bộ 2.5 giây -> Quay vòng lại bước 1
+      // Chế độ 10: Chạy tuần hoàn toàn bộ các chế độ theo thứ tự:
+      //   1. Mode 3: Xếp hình từ dưới lên (1 lần)
+      //   2. Mode 6: Sao Băng từ trên xuống (5 lần)
+      //   3. Mode 4: Xếp hình từ trên xuống (1 lần)
+      //   4. Mode 5: Sao Băng từ dưới lên (5 lần)
+      //   5. Mode 7: Chớp nháy đồng bộ (5 lần)
+      //   6. Mode 8: Sáng, tắt so le chẵn lẻ (10 lần)
+      //   -> Lặp lại từ bước 1
       static uint8_t auto_sub = 0;
       static uint8_t auto_cnt = 0;
+      static uint8_t xep_sub_phase = 0;
+      static uint8_t stacked_count = 0;
+      static int16_t drop_idx = 0;
 
       static uint8_t last_check_mode = 0;
       if (last_check_mode != config.mode) {
         last_check_mode = config.mode;
         auto_sub = 0;
         auto_cnt = 0;
+        xep_sub_phase = 0;
+        stacked_count = 0;
+        drop_idx = 0;
         demo_phase = 0;
         demo_step = 0;
         demo_last_time = now;
@@ -817,101 +955,197 @@ void runDemoEffects() {
       }
 
       switch (auto_sub) {
-        // --- 1. Sáng dồn từ dưới lên (1 chu kỳ) ---
+        // --- 1. Mode 3: Xếp hình từ dưới lên (Chạy 1 lần) ---
         case 0: {
-          if (demo_phase == 0) {
-            if (now - demo_last_time >= t0) {
+          uint16_t xep_speed = (config.t0 >= 20 && config.t0 <= 5000) ? config.t0 : 40;
+          uint16_t unstack_speed = (config.t1 >= 20 && config.t1 <= 5000) ? config.t1 : 60;
+          uint16_t hold_full_time = (config.t2 >= 500 && config.t2 <= 3000) ? config.t2 : 1200;
+
+          if (xep_sub_phase == 0) {
+            if (now - demo_last_time >= xep_speed) {
               demo_last_time = now;
-              demo_step++;
-              if (demo_step <= N) shift595_set_pin(demo_step - 1, true);
-              if (demo_step >= N) {
-                shift595_set_all(true);
-                demo_phase = 1;
+              memset(led_buffer, 0, sizeof(led_buffer));
+              for (uint8_t i = N - stacked_count; i < N; i++) {
+                led_buffer[i / 8] |= (1 << (i % 8));
+              }
+              if (drop_idx < (int16_t)(N - stacked_count)) {
+                led_buffer[drop_idx / 8] |= (1 << (drop_idx % 8));
+              }
+              shift595_update();
+
+              if (drop_idx >= (int16_t)(N - stacked_count - 1)) {
+                stacked_count++;
+                drop_idx = 0;
+                if (stacked_count >= N) {
+                  shift595_set_all(true);
+                  xep_sub_phase = 1;
+                  demo_last_time = now;
+                }
+              } else {
+                drop_idx++;
+              }
+            }
+          } else if (xep_sub_phase == 1) {
+            if (now - demo_last_time >= hold_full_time) {
+              xep_sub_phase = 2;
+              drop_idx = 0;
+              demo_last_time = now;
+            }
+          } else if (xep_sub_phase == 2) {
+            if (now - demo_last_time >= unstack_speed) {
+              demo_last_time = now;
+              drop_idx++;
+              if (drop_idx <= N) {
+                shift595_set_pin(drop_idx - 1, false);
+              }
+              if (drop_idx >= N) {
+                shift595_clear_all();
+                xep_sub_phase = 3;
                 demo_last_time = now;
               }
             }
-          } else if (demo_phase == 1) {
-            uint16_t hold_time = (t2 > 2500) ? 2500 : t2;
-            if (now - demo_last_time >= hold_time) {
-              demo_phase = 2;
-              demo_step = 0;
-              demo_last_time = now;
-            }
-          } else if (demo_phase == 2) {
-            if (now - demo_last_time >= t1) {
-              demo_last_time = now;
-              demo_step++;
-              if (demo_step <= N) shift595_set_pin(demo_step - 1, false);
-              if (demo_step >= N) {
-                shift595_set_all(false);
-                demo_phase = 3;
-                demo_last_time = now;
-              }
-            }
-          } else if (demo_phase == 3) {
+          } else if (xep_sub_phase == 3) {
             if (now - demo_last_time >= 400) {
-              auto_sub = 1;
-              demo_phase = 0;
-              demo_step = 0;
+              auto_cnt++;
+              stacked_count = 0;
+              drop_idx = 0;
+              xep_sub_phase = 0;
               demo_last_time = now;
               shift595_clear_all();
+
+              if (auto_cnt >= 1) {
+                auto_sub = 1; // Chuyển sang Mode 6: Sao Băng từ trên xuống (5 lần)
+                auto_cnt = 0;
+                demo_phase = 0;
+                demo_step = 0;
+              }
             }
           }
           break;
         }
 
-        // --- 2. Sáng dồn từ trên xuống (1 chu kỳ) ---
+        // --- 2. Mode 6: Sao Băng từ trên xuống (Chạy 5 lần) ---
         case 1: {
+          uint16_t meteor_speed = (config.t0 >= 20 && config.t0 <= 5000) ? config.t0 : 45;
+          const uint16_t METEOR_PAUSE = 400;
+          uint8_t tail_len = (config.meteor_leds >= 1 && config.meteor_leds <= 15) ? config.meteor_leds : 5;
+
           if (demo_phase == 0) {
-            if (now - demo_last_time >= t0) {
+            if (now - demo_last_time >= meteor_speed) {
               demo_last_time = now;
               demo_step++;
-              if (demo_step <= N) shift595_set_pin(N - demo_step, true);
-              if (demo_step >= N) {
-                shift595_set_all(true);
+
+              if (demo_step < N + tail_len) {
+                memset(led_buffer, 0, sizeof(led_buffer));
+                for (uint8_t k = 0; k < tail_len; k++) {
+                  int pos = (N - 1 - demo_step) + k;
+                  if (pos >= 0 && pos < N) {
+                    led_buffer[pos / 8] |= (1 << (pos % 8));
+                  }
+                }
+                shift595_update();
+              } else {
+                shift595_set_all(false);
                 demo_phase = 1;
                 demo_last_time = now;
               }
             }
-          } else if (demo_phase == 1) {
-            uint16_t hold_time = (t2 > 2500) ? 2500 : t2;
-            if (now - demo_last_time >= hold_time) {
-              demo_phase = 2;
-              demo_step = 0;
-              demo_last_time = now;
-            }
-          } else if (demo_phase == 2) {
-            if (now - demo_last_time >= t1) {
-              demo_last_time = now;
-              demo_step++;
-              if (demo_step <= N) shift595_set_pin(N - demo_step, false);
-              if (demo_step >= N) {
-                shift595_set_all(false);
-                demo_phase = 3;
-                demo_last_time = now;
-              }
-            }
-          } else if (demo_phase == 3) {
-            if (now - demo_last_time >= 400) {
-              auto_sub = 2;
-              auto_cnt = 0;
+          } else {
+            if (now - demo_last_time >= METEOR_PAUSE) {
+              auto_cnt++;
               demo_phase = 0;
               demo_step = 0;
               demo_last_time = now;
-              shift595_clear_all();
+
+              if (auto_cnt >= 5) {
+                auto_sub = 2; // Chuyển sang Mode 4: Xếp hình từ trên xuống (1 lần)
+                auto_cnt = 0;
+                drop_idx = N - 1;
+                stacked_count = 0;
+                xep_sub_phase = 0;
+              }
             }
           }
           break;
         }
 
-        // --- 3. Sao băng / rượt đuổi (3 đợt lướt qua) ---
+        // --- 3. Mode 4: Xếp hình từ trên xuống (Chạy 1 lần) ---
         case 2: {
-          const uint16_t METEOR_SPEED = 45;
+          uint16_t xep_speed = (config.t0 >= 20 && config.t0 <= 5000) ? config.t0 : 40;
+          uint16_t unstack_speed = (config.t1 >= 20 && config.t1 <= 5000) ? config.t1 : 60;
+          uint16_t hold_full_time = (config.t2 >= 500 && config.t2 <= 3000) ? config.t2 : 1200;
+
+          if (xep_sub_phase == 0) {
+            if (now - demo_last_time >= xep_speed) {
+              demo_last_time = now;
+              memset(led_buffer, 0, sizeof(led_buffer));
+              for (uint8_t i = 0; i < stacked_count && i < N; i++) {
+                led_buffer[i / 8] |= (1 << (i % 8));
+              }
+              if (drop_idx >= (int16_t)stacked_count && drop_idx < (int16_t)N) {
+                led_buffer[drop_idx / 8] |= (1 << (drop_idx % 8));
+              }
+              shift595_update();
+
+              if (drop_idx <= (int16_t)stacked_count) {
+                stacked_count++;
+                drop_idx = N - 1;
+                if (stacked_count >= N) {
+                  shift595_set_all(true);
+                  xep_sub_phase = 1;
+                  demo_last_time = now;
+                }
+              } else {
+                drop_idx--;
+              }
+            }
+          } else if (xep_sub_phase == 1) {
+            if (now - demo_last_time >= hold_full_time) {
+              xep_sub_phase = 2;
+              drop_idx = 0;
+              demo_last_time = now;
+            }
+          } else if (xep_sub_phase == 2) {
+            if (now - demo_last_time >= unstack_speed) {
+              demo_last_time = now;
+              drop_idx++;
+              if (drop_idx <= N) {
+                shift595_set_pin(N - drop_idx, false);
+              }
+              if (drop_idx >= N) {
+                shift595_clear_all();
+                xep_sub_phase = 3;
+                demo_last_time = now;
+              }
+            }
+          } else if (xep_sub_phase == 3) {
+            if (now - demo_last_time >= 400) {
+              auto_cnt++;
+              stacked_count = 0;
+              drop_idx = N - 1;
+              xep_sub_phase = 0;
+              demo_last_time = now;
+              shift595_clear_all();
+
+              if (auto_cnt >= 1) {
+                auto_sub = 3; // Chuyển sang Mode 5: Sao Băng từ dưới lên (5 lần)
+                auto_cnt = 0;
+                demo_phase = 0;
+                demo_step = 0;
+              }
+            }
+          }
+          break;
+        }
+
+        // --- 4. Mode 5: Sao Băng từ dưới lên (Chạy 5 lần) ---
+        case 3: {
+          uint16_t meteor_speed = (config.t0 >= 20 && config.t0 <= 5000) ? config.t0 : 45;
           const uint16_t METEOR_PAUSE = 400;
-          uint8_t tail_len = (N >= 20) ? 5 : 4;
+          uint8_t tail_len = (config.meteor_leds >= 1 && config.meteor_leds <= 15) ? config.meteor_leds : 5;
 
           if (demo_phase == 0) {
-            if (now - demo_last_time >= METEOR_SPEED) {
+            if (now - demo_last_time >= meteor_speed) {
               demo_last_time = now;
               demo_step++;
 
@@ -928,31 +1162,46 @@ void runDemoEffects() {
                 shift595_set_all(false);
                 demo_phase = 1;
                 demo_last_time = now;
-                auto_cnt++;
               }
             }
           } else {
             if (now - demo_last_time >= METEOR_PAUSE) {
-              if (auto_cnt >= 3) {
-                auto_sub = 3;
+              auto_cnt++;
+              demo_phase = 0;
+              demo_step = 0;
+              demo_last_time = now;
+
+              if (auto_cnt >= 5) {
+                auto_sub = 4; // Chuyển sang Mode 7: Chớp nháy đồng bộ (5 lần)
                 auto_cnt = 0;
-                demo_phase = 0;
-                demo_step = 0;
-                demo_last_time = now;
                 demo_flag = false;
-                shift595_clear_all();
-              } else {
-                demo_phase = 0;
-                demo_step = 0;
-                demo_last_time = now;
               }
             }
           }
           break;
         }
 
-        // --- 4. Sáng tắt so le chẵn - lẻ (8 nhịp đổi bên) ---
-        case 3: {
+        // --- 5. Mode 7: Chớp nháy đồng bộ (Chớp nháy 5 lần) ---
+        case 4: {
+          if (now - demo_last_time >= 350) {
+            demo_last_time = now;
+            demo_flag = !demo_flag;
+            shift595_set_all(demo_flag);
+            auto_cnt++;
+
+            if (auto_cnt >= 10) { // 5 chu kỳ Bật - Tắt đầy đủ
+              shift595_set_all(false);
+              auto_sub = 5; // Chuyển sang Mode 8: So le chẵn lẻ (10 lần)
+              auto_cnt = 0;
+              demo_flag = false;
+              demo_last_time = now;
+            }
+          }
+          break;
+        }
+
+        // --- 6. Mode 8: Sáng, tắt so le chẵn lẻ (Chạy 10 lần) ---
+        case 5: {
           uint16_t rate = (t0 < 100) ? 250 : (t0 > 400 ? 400 : t0 * 2);
           if (now - demo_last_time >= rate) {
             demo_last_time = now;
@@ -967,47 +1216,19 @@ void runDemoEffects() {
             shift595_update();
             auto_cnt++;
 
-            if (auto_cnt >= 8) {
-              auto_sub = 4;
+            if (auto_cnt >= 20) { // 10 chu kỳ đổi bên chẵn/lẻ đầy đủ (20 nhịp)
+              shift595_set_all(false);
+              auto_sub = 0; // Quay lại từ đầu: Mode 3 Xếp hình từ dưới lên
               auto_cnt = 0;
+              xep_sub_phase = 0;
+              stacked_count = 0;
+              drop_idx = 0;
               demo_phase = 0;
               demo_step = 0;
               demo_last_time = now;
               demo_flag = false;
               shift595_clear_all();
             }
-          }
-          break;
-        }
-
-        // --- 5. Chớp nháy đồng bộ (6 nhịp) ---
-        case 4: {
-          if (now - demo_last_time >= 350) {
-            demo_last_time = now;
-            demo_flag = !demo_flag;
-            shift595_set_all(demo_flag);
-            auto_cnt++;
-
-            if (auto_cnt >= 6) {
-              auto_sub = 5;
-              auto_cnt = 0;
-              demo_last_time = now;
-              shift595_set_all(true);
-            }
-          }
-          break;
-        }
-
-        // --- 6. Sáng toàn bộ 2.5 giây rồi quay vòng lại từ đầu ---
-        case 5: {
-          if (now - demo_last_time >= 2500) {
-            auto_sub = 0;
-            auto_cnt = 0;
-            demo_phase = 0;
-            demo_step = 0;
-            demo_last_time = now;
-            demo_flag = false;
-            shift595_clear_all();
           }
           break;
         }
@@ -1077,12 +1298,12 @@ void handleNotFound() {
 
 void handleApiGetConfig() {
   // Trả về JSON bằng stack buffer, không cấp phát heap động, chống phân mảnh RAM
-  char buf[256];
+  char buf[300];
   snprintf_P(buf, sizeof(buf),
-    PSTR("{\"mode\":%u,\"number_step\":%u,\"t0\":%u,\"t1\":%u,\"t2\":%u,"
+    PSTR("{\"mode\":%u,\"number_step\":%u,\"t0\":%u,\"t1\":%u,\"t2\":%u,\"meteor_leds\":%u,"
          "\"t0_step_on\":%u,\"t0_step_off\":%u,\"t1_hold\":%u,"
          "\"free_heap\":%u,\"heap_frag\":%u}"),
-    config.mode, config.number_step, config.t0, config.t1, config.t2,
+    config.mode, config.number_step, config.t0, config.t1, config.t2, config.meteor_leds,
     config.t0, config.t1, config.t2,
     ESP.getFreeHeap(), ESP.getHeapFragmentation()
   );
@@ -1098,7 +1319,7 @@ void handleApiPostConfig() {
     const char* body = server.arg("plain").c_str();
 
     int mode = getJsonInt(body, "mode", -1);
-    if (mode >= 1 && mode <= 9) config.mode = mode;
+    if (mode >= 1 && mode <= 10) config.mode = mode;
 
     int steps = getJsonInt(body, "number_step", -1);
     if (steps >= 1 && steps <= MAX_STEPS) config.number_step = steps;
@@ -1118,6 +1339,10 @@ void handleApiPostConfig() {
     if (t2_val < 0) t2_val = getJsonInt(body, "t1_hold", -1);
     if (t2_val >= 500 && t2_val <= 60000) config.t2 = t2_val;
 
+    // meteor_leds: Số LED sao băng
+    int ml = getJsonInt(body, "meteor_leds", -1);
+    if (ml >= 1 && ml <= 15) config.meteor_leds = ml;
+
     int rb = getJsonInt(body, "reboot", 1);
     if (rb == 1) shouldReboot = true;
 
@@ -1135,7 +1360,11 @@ void handleApiPostConfig() {
   // Fallback URL-encoded
   if (server.hasArg("mode")) {
     int m = server.arg("mode").toInt();
-    if (m >= 1 && m <= 9) config.mode = m;
+    if (m >= 1 && m <= 10) config.mode = m;
+  }
+  if (server.hasArg("meteor_leds")) {
+    int ml = server.arg("meteor_leds").toInt();
+    if (ml >= 1 && ml <= 15) config.meteor_leds = ml;
   }
   if (server.hasArg("number_step")) {
     int s = server.arg("number_step").toInt();
